@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>INNERCORE — Sovereign Command Center</title>
+<meta name="description" content="Sovereign Agentic AI Command Center — Air-gapped on-premise execution, zero cloud egress, and cryptographic audit.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a130c'/%3E%3Ccircle cx='12' cy='12' r='8' stroke='%233df09e' stroke-width='1.5' fill='none' stroke-dasharray='3 2'/%3E%3Ccircle cx='12' cy='12' r='4.5' fill='%233df09e'/%3E%3C/svg%3E">
+
+<style>
+@font-face {
+  font-family: 'Lexend';
+  src: url('innercore-assets/lexend-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #050a06;
+  --panel-bg: rgba(10, 18, 12, 0.78);
+  --panel-glass: rgba(13, 23, 16, 0.88);
+  --card-bg: rgba(12, 20, 14, 0.82);
+  --card-inner: rgba(16, 27, 19, 0.90);
+  --ink: #e2e8e4;
+  --ink-soft: #b0bcb2;
+  --ink-faint: #768579;
+  --ink-dim: #4d5c50;
+  --moss: #34d399;
+  --moss-soft: #28a774;
+  --moss-glow: rgba(52, 211, 153, 0.12);
+  --moss-line: rgba(52, 211, 153, 0.28);
+  --amber: #d99b26;
+  --red: #d9534f;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-soft: rgba(255, 255, 255, 0.04);
+  --line-focus: rgba(52, 211, 153, 0.35);
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Lexend', -apple-system, sans-serif;
+  font-weight: 300;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ThreeUI Predictive Arc — Ribbon Field Background Host (UNTOUCHED) */
+.threeui-background.ribbon-field {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background: #050a06;
+}
+.threeui-background.ribbon-field canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* App Shell Structure */
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  grid-template-rows: 54px 1fr;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Topbar */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(6, 12, 7, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand-mark {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand-mark svg { width: 100%; height: 100%; stroke: var(--moss-soft); fill: none; }
+.brand-title {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.top-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  color: var(--ink-faint);
+}
+.status-pip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--moss);
+}
+.status-pip .pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--moss-soft);
+}
+.status-pip.demo-mode {
+  color: var(--amber);
+}
+.status-pip.demo-mode .pip {
+  background: var(--amber);
+}
+
+/* Sidebar */
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: rgba(6, 12, 8, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 18px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  position: relative;
+  text-align: left;
+}
+.nav-link:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
+}
+.nav-link.active {
+  color: var(--moss);
+  background: var(--moss-glow);
+  border-color: var(--moss-line);
+  font-weight: 400;
+}
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--moss-soft);
+}
+
+.sidebar-foot {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  color: var(--ink-dim);
+  padding: 0 4px;
+}
+
+/* Workspace Stage Container (Split View for Document Viewer) */
+.workspace-stage-wrapper {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 0px;
+  transition: grid-template-columns 0.35s var(--ease);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.workspace-stage-wrapper.viewer-open {
+  grid-template-columns: 1fr 480px;
+}
+
+/* Main Viewport Stage */
+.main-stage {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 32px 80px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.main-stage::-webkit-scrollbar { width: 5px; }
+.main-stage::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* View Panels */
+.view-pane {
+  display: none;
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fadeIn 0.25s var(--ease) forwards;
+}
+.view-pane.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Workspace Top Context Bar */
+.workspace-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.context-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.doc-filter-select {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.doc-filter-select:hover, .doc-filter-select:focus {
+  border-color: var(--line-focus);
+  color: var(--ink);
+}
+
+.btn-add-knowledge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--moss);
+  border: 1px solid var(--moss-line);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.btn-add-knowledge-pill:hover {
+  background: rgba(52, 211, 153, 0.22);
+  border-color: var(--moss);
+}
+
+.btn-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.btn-history-toggle:hover {
+  color: var(--ink);
+  border-color: var(--line-focus);
+}
+
+/* Inline Add Knowledge Modal */
+.knowledge-inline-modal {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--moss-line);
+  background: var(--card-bg);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.25s var(--ease) forwards;
+}
+.knowledge-inline-modal.active { display: flex; }
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.5px;
+}
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.modal-close-btn:hover { color: var(--ink); }
+
+.dropzone-box {
+  border: 1px dashed var(--line-focus);
+  background: rgba(52, 211, 153, 0.02);
+  border-radius: 6px;
+  padding: 22px 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.dropzone-box:hover {
+  background: rgba(52, 211, 153, 0.05);
+  border-color: var(--moss);
+}
+
+/* Live Upload Progress */
+.upload-live-progress {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-focus);
+  background: rgba(8, 14, 9, 0.9);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.upload-live-progress.active { display: flex; }
+.progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink-dim);
+}
+.progress-row.active { color: var(--amber); font-weight: 500; }
+.progress-row.done { color: var(--moss); }
+
+.upload-success-toast {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--moss-glow);
+  border: 1px solid var(--moss-line);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--moss);
+}
+.upload-success-toast.active { display: flex; }
+
+/* History Drawer */
+.history-drawer {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-focus);
+  background: var(--panel-glass);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.25s var(--ease) forwards;
+}
+.history-drawer.active { display: flex; }
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--card-bg);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.history-item:hover {
+  border-color: var(--line-focus);
+  background: rgba(16, 26, 18, 0.9);
+}
+.history-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-dim);
+}
+.history-item-q {
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 400;
+}
+.history-item-prev {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Workspace Hero & Console */
+.hero-intent {
+  margin-bottom: 20px;
+}
+.hero-intent-title {
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.hero-intent-sub {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.command-console {
+  display: flex;
+  align-items: stretch;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 20px;
+  transition: border-color 0.2s var(--ease);
+}
+.command-console:focus-within {
+  border-color: var(--line-focus);
+}
+.command-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 300;
+  color: var(--ink);
+  outline: none;
+}
+.command-input::placeholder { color: var(--ink-dim); }
+
+.command-btn {
+  padding: 0 20px;
+  background: #1e3a29;
+  color: #e2e8e4;
+  border: 1px solid var(--moss-line);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.command-btn:hover {
+  background: #254a34;
+  border-color: var(--moss);
+  color: #ffffff;
+}
+.command-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Investigation Thread Container */
+.investigation-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* User Prompt Card */
+.thread-turn-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid var(--line-soft);
+  background: var(--card-bg);
+  border-radius: 8px;
+  animation: fadeIn 0.25s var(--ease) forwards;
+}
+.thread-user-query {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.user-avatar {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--moss);
+  background: var(--moss-glow);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--moss-line);
+  flex: none;
+}
+.user-query-text {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Active Loading / Execution Step Card */
+.thread-executing-card {
+  border: 1px solid var(--moss-line);
+  background: rgba(10, 19, 13, 0.90);
+  border-radius: 6px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeIn 0.25s var(--ease) forwards;
+}
+.exec-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--moss);
+  letter-spacing: 0.8px;
+}
+.exec-spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--moss-line);
+  border-top-color: var(--moss);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.exec-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+.exec-step-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-dim);
+  padding: 2px 0;
+}
+.exec-step-row.active {
+  color: var(--moss);
+  font-weight: 500;
+}
+.exec-step-row.done {
+  color: var(--ink-soft);
+}
+.exec-step-row .s-icon {
+  width: 14px;
+  display: inline-block;
+}
+
+/* Synthesized Result Section */
+.asset-callout {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 5px;
+}
+
+.status-headline {
+  font-size: 14.5px;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--moss);
+  background: var(--moss-glow);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--moss-line);
+}
+.status-tag.demo { color: var(--amber); background: rgba(217, 155, 38, 0.1); border-color: rgba(217, 155, 38, 0.25); }
+
+.result-prose {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+  white-space: pre-wrap;
+}
+
+/* Clickable Evidence Cards */
+.evidence-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.evidence-pill {
+  border: 1px solid var(--line-soft);
+  background: var(--card-inner);
+  border-radius: 6px;
+  padding: 11px 14px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.evidence-pill:hover {
+  border-color: var(--line-focus);
+  background: rgba(20, 32, 23, 0.95);
+}
+.evidence-pill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.evidence-pill .name {
+  font-weight: 400;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.evidence-pill .meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--moss-soft);
+}
+.evidence-pill .action-hint {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--moss);
+  background: rgba(52, 211, 153, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--moss-line);
+}
+.evidence-pill .excerpt {
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  font-style: italic;
+  border-left: 2px solid var(--moss-line);
+  padding-left: 8px;
+  margin-top: 3px;
+}
+
+/* Summary Spec Table */
+.summary-spec {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  margin-bottom: 14px;
+}
+.summary-spec td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.summary-spec td:first-child {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  width: 120px;
+}
+.summary-spec td:last-child {
+  color: var(--ink-soft);
+}
+
+/* Collapsible Agent Trace */
+.trace-compact {
+  border: 1px solid var(--line-soft);
+  background: rgba(8, 14, 9, 0.5);
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+.trace-compact-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+.trace-line {
+  display: grid;
+  grid-template-columns: 60px 130px 1fr;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 0;
+  color: var(--ink-dim);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+.trace-line .t { color: var(--ink-dim); }
+.trace-line .e { color: var(--ink-soft); }
+.trace-line .s { color: var(--moss-soft); }
+
+/* Follow-up Console at Bottom of Investigation */
+.followup-console-wrap {
+  margin-top: 16px;
+}
+.followup-console {
+  display: flex;
+  align-items: stretch;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px;
+  transition: all 0.2s var(--ease);
+}
+.followup-console:focus-within {
+  border-color: var(--line-focus);
+}
+.followup-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  outline: none;
+}
+.followup-input::placeholder { color: var(--ink-dim); }
+.followup-btn {
+  padding: 0 16px;
+  background: #1e3a29;
+  color: #e2e8e4;
+  border: 1px solid var(--moss-line);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.followup-btn:hover { background: #254a34; color: #ffffff; }
+
+/* ======================================================================
+   RIGHT-SIDE LOCAL DOCUMENT VIEWER (CLAUDE-STYLE SPLIT PANEL)
+   ====================================================================== */
+.doc-viewer-panel {
+  position: relative;
+  height: 100%;
+  border-left: 1px solid var(--line);
+  background: rgba(8, 15, 10, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+.doc-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(6, 12, 7, 0.85);
+}
+.doc-viewer-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.doc-viewer-docname {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.doc-viewer-meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--moss);
+}
+.doc-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.doc-nav-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.doc-nav-btn:hover { color: var(--ink); border-color: var(--line-focus); }
+.doc-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.doc-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 16px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.doc-close-btn:hover { color: var(--ink); }
+
+.doc-viewer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 40px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.doc-viewer-body::-webkit-scrollbar { width: 4px; }
+.doc-viewer-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+/* Excerpt Highlight Box inside Document Viewer */
+.viewer-excerpt-highlight {
+  background: rgba(52, 211, 153, 0.09);
+  border-left: 3px solid var(--moss);
+  border-radius: 0 4px 4px 0;
+  padding: 12px 14px;
+  margin: 12px 0 16px;
+}
+.viewer-excerpt-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  color: var(--moss);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.viewer-excerpt-text {
+  font-size: 11.5px;
+  color: #ffffff;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.viewer-full-page-text {
+  white-space: pre-wrap;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.6;
+  padding-top: 8px;
+}
+
+/* Secondary Views */
+.view-title-quiet {
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.view-sub-quiet {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-bottom: 22px;
+}
+.clean-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.clean-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--card-bg);
+  border-radius: 6px;
+}
+.clean-item .t-primary { font-size: 12.5px; color: var(--ink); }
+.clean-item .t-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); margin-top: 2px; }
+
+.table-quiet { width: 100%; border-collapse: collapse; font-size: 12px; }
+.table-quiet th { text-align: left; font-family: var(--mono); font-size: 9px; letter-spacing: 0.8px; color: var(--ink-dim); text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.table-quiet td { padding: 10px 10px; border-bottom: 1px solid var(--line-soft); color: var(--ink-soft); }
+
+.telemetry-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.telemetry-item {
+  border: 1px solid var(--line-soft);
+  background: var(--card-bg);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.telemetry-item .label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.8px; color: var(--ink-dim); text-transform: uppercase; }
+.telemetry-item .val { font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 5px; }
+.telemetry-item .val .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--moss-soft); }
+.telemetry-item .val .dot.demo { background: var(--amber); }
+
+.verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  background: var(--moss-glow);
+  border: 1px solid var(--moss-line);
+  color: var(--moss);
+}
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 50px 1fr; }
+  .nav-link span { display: none; }
+  .nav-link { justify-content: center; padding: 10px 0; }
+  .nav-link::before { display: none; }
+  .top-telemetry { display: none; }
+  .main-stage { padding: 18px 14px 60px; }
+  .workspace-stage-wrapper.viewer-open { grid-template-columns: 1fr; }
+  .doc-viewer-panel { position: fixed; inset: 54px 0 0 0; z-index: 100; }
+}
+</style>
+</head>
+<body>
+
+<!-- ThreeUI Predictive Arc — Ribbon Field Canvas Host (UNTOUCHED) -->
+<div class="threeui-background ribbon-field" id="ribbon-field-host">
+  <canvas id="ribbon-field-canvas"></canvas>
+</div>
+
+<div class="app-shell">
+
+  <!-- ============ TOPBAR ============ -->
+  <header class="topbar">
+    <div class="brand-lockup">
+      <a href="index.html" class="brand-mark" title="Back to Landing Page">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/><circle cx="12" cy="12" r="2.8" fill="#0a130c" stroke="none"/></svg>
+      </a>
+      <a href="index.html" class="brand-title">INNERCORE</a>
+    </div>
+    <div class="top-telemetry">
+      <div class="status-pip" id="top-status-pip"><span class="pip"></span><span id="top-status-label">LOCAL AI</span></div>
+      <div>EGRESS BLOCKED</div>
+      <div style="color:var(--ink-dim);">OPERATOR_L2</div>
+    </div>
+  </header>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <nav class="nav-list">
+      <button class="nav-link active" data-view="workspace"><span>Workspace</span></button>
+      <button class="nav-link" data-view="overview"><span>Overview</span></button>
+      <button class="nav-link" data-view="knowledge"><span>Knowledge</span></button>
+      <button class="nav-link" data-view="agents"><span>Agents</span></button>
+      <button class="nav-link" data-view="security"><span>Security</span></button>
+      <button class="nav-link" data-view="audit"><span>Audit</span></button>
+    </nav>
+    <div class="sidebar-foot">NODE: IC-HYD-01</div>
+  </aside>
+
+  <!-- ============ WORKSPACE & SPLIT VIEWER WRAPPER ============ -->
+  <div class="workspace-stage-wrapper" id="workspace-wrapper">
+
+    <!-- Main Content Area -->
+    <main class="main-stage" id="main-scroll">
+
+      <!-- ---------------- AI WORKSPACE (PRIMARY CENTERPIECE) ---------------- -->
+      <section class="view-pane active" id="view-workspace">
+
+        <!-- Top Context Bar -->
+        <div class="workspace-top-bar">
+          <div class="context-pill-group">
+            <button class="btn-add-knowledge-pill" id="ws-btn-add-knowledge">
+              <span>+ ADD KNOWLEDGE</span>
+            </button>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-family:var(--mono); font-size:9.5px; color:var(--ink-dim);">CONTEXT:</span>
+              <select class="doc-filter-select" id="doc-context-select">
+                <option value="ALL">ALL DOCUMENTS</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-history-toggle" id="btn-toggle-history">
+            <span>⏱ HISTORY</span>
+            <span id="history-badge-count" style="color:var(--moss); font-weight:600;">(0)</span>
+          </button>
+        </div>
+
+        <!-- Inline Add Knowledge Modal -->
+        <div class="knowledge-inline-modal" id="ws-inline-upload-modal">
+          <div class="modal-head">
+            <div class="modal-title">ADD PRIVATE KNOWLEDGE</div>
+            <button class="modal-close-btn" id="ws-modal-close">&times;</button>
+          </div>
+          <p style="font-size:11.5px; color:var(--ink-faint); margin-top:-4px;">
+            Ingest operational manuals locally &middot; 100% on-premise embedding &middot; Supported: PDF &middot; DOCX &middot; TXT &middot; MD &middot; CSV
+          </p>
+
+          <input type="file" id="ws-file-input" accept=".pdf,.docx,.doc,.txt,.md,.markdown,.csv,.tsv,.json,.log" style="display:none;">
+
+          <div class="dropzone-box" id="ws-dropzone">
+            <div style="font-size:20px; margin-bottom:4px;">📄</div>
+            <div style="font-size:12.5px; color:var(--ink); font-weight:400; margin-bottom:2px;">[ Drop files here or click to browse ]</div>
+            <div style="font-family:var(--mono); font-size:10px; color:var(--ink-dim);">Local PyMuPDF / python-docx / CSV vector parsing</div>
+          </div>
+
+          <div class="upload-live-progress" id="ws-upload-progress">
+            <div style="font-size:9px; letter-spacing:0.8px; color:var(--ink-dim); text-transform:uppercase;">INGESTION PIPELINE</div>
+            <div class="progress-row" id="ws-u-1"><span>1. UPLOADING &mdash; Transferring binary locally</span><span id="ws-u-1-s">...</span></div>
+            <div class="progress-row" id="ws-u-2"><span>2. EXTRACTING &mdash; Structure &amp; text parsing</span><span id="ws-u-2-s">...</span></div>
+            <div class="progress-row" id="ws-u-3"><span>3. INDEXING &mdash; ONNX embedding chunks</span><span id="ws-u-3-s">...</span></div>
+            <div class="progress-row" id="ws-u-4"><span>4. READY &mdash; ChromaDB indexed</span><span id="ws-u-4-s">...</span></div>
+          </div>
+
+          <div class="upload-success-toast" id="ws-upload-toast">
+            <span>✓</span>
+            <span id="ws-upload-toast-msg">Document added to private knowledge</span>
+          </div>
+        </div>
+
+        <!-- Collapsible History Drawer -->
+        <div class="history-drawer" id="ws-history-drawer">
+          <div class="modal-head">
+            <div class="modal-title">PREVIOUS INVESTIGATIONS</div>
+            <button class="command-btn" id="btn-new-investigation" style="padding:3px 8px; font-size:9.5px;">+ New Investigation</button>
+          </div>
+          <div class="history-list" id="history-items-container">
+            <div style="padding:14px; color:var(--ink-dim); font-size:11px; text-align:center;">No previous investigations yet.</div>
+          </div>
+        </div>
+
+        <!-- Hero Intent Header -->
+        <div class="hero-intent">
+          <h1 class="hero-intent-title">What should INNERCORE investigate?</h1>
+          <p class="hero-intent-sub">Direct sovereign agent loops over private technical knowledge and approved local diagnostics.</p>
+        </div>
+
+        <!-- Initial Query Console -->
+        <div class="command-console" id="primary-console-box">
+          <input type="text" id="query-input" class="command-input" value="What is INNERCORE's revenue model?" placeholder="Enter operational investigation task or question on uploaded knowledge…">
+          <button class="command-btn" id="run-btn">Run &rarr;</button>
+        </div>
+
+        <!-- Investigation Thread (Multi-Turn) -->
+        <div class="investigation-thread" id="investigation-thread-container"></div>
+
+        <!-- Persistent Follow-up Console Anchor -->
+        <div id="thread-followup-anchor"></div>
+
+      </section>
+
+      <!-- ---------------- OVERVIEW (SIMPLE READINESS) ---------------- -->
+      <section class="view-pane" id="view-overview">
+        <h2 class="view-title-quiet">Sovereign Environment</h2>
+        <p class="view-sub-quiet">Operational readiness telemetry of the air-gapped system boundary.</p>
+
+        <div class="telemetry-strip">
+          <div class="telemetry-item"><span class="label">Local AI</span><span class="val" id="ov-ai-status"><span class="dot"></span>READY</span></div>
+          <div class="telemetry-item"><span class="label">Knowledge</span><span class="val" id="ov-doc-count"><span class="dot"></span>0 DOCUMENTS</span></div>
+          <div class="telemetry-item"><span class="label">Agent Runtime</span><span class="val"><span class="dot"></span>3 READY</span></div>
+          <div class="telemetry-item"><span class="label">Network</span><span class="val"><span class="dot"></span>LOCAL AIR-GAPPED</span></div>
+        </div>
+
+        <div style="max-width:540px; margin-bottom:24px;">
+          <div class="asset-callout" style="margin-bottom:10px;">Active Security Topology</div>
+          <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:16px;">
+            The environment is running in local isolation mode. External network egress is blocked at the virtual interface boundary. Inference executes entirely on local weights without cloud telemetry. Documents processed via PyMuPDF, python-docx, and CSV parsers in ChromaDB.
+          </p>
+          <button class="nav-link active" style="padding:0; font-size:12px; color:var(--moss);" data-goto="workspace">Open AI Workspace &rarr;</button>
+        </div>
+
+        <div class="asset-callout" style="margin-bottom:10px;">Recent Investigations</div>
+        <div class="clean-list" id="ov-recent-investigations">
+          <div style="padding:14px; color:var(--ink-dim); font-size:11.5px;">No previous investigations logged.</div>
+        </div>
+      </section>
+
+      <!-- ---------------- KNOWLEDGE (DOCUMENTS) ---------------- -->
+      <section class="view-pane" id="view-knowledge">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+          <div>
+            <h2 class="view-title-quiet" style="margin-bottom:3px;">Private Knowledge Enclave</h2>
+            <p class="view-sub-quiet" style="margin-bottom:0;">On-premise vector store &middot; Multi-format local chunking</p>
+          </div>
+          <button class="command-btn" id="know-page-add-btn" style="padding:7px 14px; font-size:10.5px;">
+            + Add Private Document
+          </button>
+        </div>
+
+        <div class="clean-list" id="knowledge-doc-list">
+          <div style="padding:16px; color:var(--ink-dim); font-size:11.5px; text-align:center;">Loading indexed documents...</div>
+        </div>
+      </section>
+
+      <!-- ---------------- AGENTS ---------------- -->
+      <section class="view-pane" id="view-agents">
+        <h2 class="view-title-quiet">Available Agents</h2>
+        <p class="view-sub-quiet">Bounded, permissioned agents authorized for local execution.</p>
+        <div class="clean-list" id="agents-roster-list">
+          <div style="padding:16px; color:var(--ink-dim); font-size:11.5px; text-align:center;">Loading available agents...</div>
+        </div>
+      </section>
+
+      <!-- ---------------- SECURITY ---------------- -->
+      <section class="view-pane" id="view-security">
+        <h2 class="view-title-quiet">Sovereign Boundary</h2>
+        <p class="view-sub-quiet">Role-based capabilities and hardware access permissions.</p>
+
+        <table class="table-quiet">
+          <thead>
+            <tr><th>Capability</th><th>Status</th><th>Enforcement Context</th></tr>
+          </thead>
+          <tbody id="security-table-body">
+            <tr><td>Private Knowledge Search</td><td style="color:var(--moss);">ALLOWED</td><td>Local Vector Database (ChromaDB)</td></tr>
+            <tr><td>Diagnostic Readout</td><td style="color:var(--moss);">ALLOWED</td><td>Bounded Diagnostic Tool</td></tr>
+            <tr><td>Report Generation</td><td style="color:var(--moss);">ALLOWED</td><td>Local File Generator</td></tr>
+            <tr><td>System Parameter Modification</td><td style="color:var(--red);">DENIED</td><td>Requires L1 System Authority</td></tr>
+            <tr><td>External Network Access</td><td style="color:var(--red);">DENIED</td><td>Air-Gapped Interface</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ---------------- AUDIT ---------------- -->
+      <section class="view-pane" id="view-audit">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <h2 class="view-title-quiet" style="margin-bottom:0;">Execution History &amp; Audit</h2>
+          <button class="command-btn" id="verify-audit-btn" style="padding:5px 12px; font-size:10px;">Verify Chain &rarr;</button>
+        </div>
+        <p class="view-sub-quiet">Tamper-evident SHA-256 hash-chained log tracking all system operations.</p>
+
+        <div id="chain-verification-banner" style="display:none; margin-bottom:14px;"></div>
+
+        <table class="table-quiet">
+          <thead>
+            <tr><th>Time</th><th>User</th><th>Role</th><th>Request</th><th>Agent</th><th>Status</th><th>Hash</th></tr>
+          </thead>
+          <tbody id="audit-table-body"></tbody>
+        </table>
+        <div id="audit-empty" style="padding:28px 0; font-size:11.5px; color:var(--ink-dim); text-align:center;">No audit records logged this session.</div>
+      </section>
+
+    </main>
+
+    <!-- ============ RIGHT-SIDE LOCAL DOCUMENT VIEWER (CLAUDE-STYLE) ============ -->
+    <aside class="doc-viewer-panel" id="doc-viewer-panel">
+      <div class="doc-viewer-header">
+        <div class="doc-viewer-title-group">
+          <div class="doc-viewer-docname">
+            <span>📄</span>
+            <span id="viewer-doc-filename">Document.pdf</span>
+          </div>
+          <div class="doc-viewer-meta" id="viewer-doc-page-info">PAGE 1 OF 1</div>
+        </div>
+        <div class="doc-viewer-controls">
+          <button class="doc-nav-btn" id="viewer-prev-btn">&larr; Prev</button>
+          <button class="doc-nav-btn" id="viewer-next-btn">Next &rarr;</button>
+          <button class="doc-close-btn" id="viewer-close-btn" title="Close Document Viewer">&times;</button>
+        </div>
+      </div>
+
+      <div class="doc-viewer-body" id="doc-viewer-body">
+        <div class="viewer-excerpt-highlight" id="viewer-highlight-box">
+          <div class="viewer-excerpt-badge">
+            <span>★</span>
+            <span id="viewer-excerpt-badge-text">RETRIEVED EVIDENCE CITATION</span>
+          </div>
+          <div class="viewer-excerpt-text" id="viewer-highlight-text">"Evidence excerpt..."</div>
+        </div>
+
+        <div class="asset-callout" style="margin-top:16px;">Full Local Page Context</div>
+        <div class="viewer-full-page-text" id="viewer-full-text">Loading page content...</div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ======================================================================
+     THREEUI AUTHORED PREDICTIVE ARC — RIBBON FIELD SHADER RUNTIME (UNTOUCHED)
+     ====================================================================== -->
+<script>
+var RibbonFieldController = (function initRibbonFieldShader() {
+  var host = document.getElementById('ribbon-field-host');
+  var canvas = document.getElementById('ribbon-field-canvas');
+  if (!host || !canvas) return null;
+
+  var VERTEX_SRC = [
+    'attribute vec2 position;',
+    'void main() {',
+    '  gl_Position = vec4(position, 0.0, 1.0);',
+    '}'
+  ].join('\n');
+
+  var FRAGMENT_SRC = [
+    'precision highp float;',
+    'uniform vec2 resolution;',
+    'uniform float time;',
+    'uniform vec2 pointer;',
+    'float hash(vec2 p) {',
+    '  p = fract(p * vec2(123.34, 456.21));',
+    '  p += dot(p, p + 45.32);',
+    '  return fract(p.x * p.y);',
+    '}',
+    'float ribbon(vec2 uv, float offset, float width, float phase) {',
+    '  float y = 0.55 + 0.20 * sin((uv.x * 2.15) + phase) + 0.045 * sin((uv.x * 7.0) - phase * 0.7);',
+    '  float d = abs(uv.y - y - offset);',
+    '  return exp(-(d * d) / width);',
+    '}',
+    'void main() {',
+    '  vec2 uv = gl_FragCoord.xy / resolution.xy;',
+    '  vec2 p = uv;',
+    '  p.x *= resolution.x / resolution.y;',
+    '  float t = time * 0.24;',
+    '  float drift = (pointer.x - 0.5) * 0.06;',
+    '  float rightFade = smoothstep(0.28, 0.72, uv.x);',
+    '  float centerDark = 1.0 - smoothstep(0.0, 0.88, distance(uv, vec2(0.18, 0.48)));',
+    '  float r1 = ribbon(vec2(uv.x + drift, uv.y), 0.03, 0.0065, t + 0.9);',
+    '  float r2 = ribbon(vec2(uv.x - drift * 0.7, uv.y), -0.23, 0.0085, t + 3.25);',
+    '  float r3 = ribbon(vec2(uv.x + drift * 0.4, uv.y), 0.25, 0.014, t + 1.85);',
+    '  float glow = r1 * 1.14 + r2 * 1.05 + r3 * 0.48;',
+    '  vec3 moss = vec3(0.24, 0.94, 0.62);',
+    '  vec3 teal = vec3(0.17, 0.83, 0.75);',
+    '  vec3 cyan = vec3(0.22, 0.82, 0.96);',
+    '  vec3 emerald = vec3(0.10, 0.75, 0.45);',
+    '  vec3 darkGreen = vec3(0.05, 0.35, 0.20);',
+    '  vec3 col = vec3(0.0);',
+    '  col += moss * r1 * 1.25;',
+    '  col += teal * r1 * 0.62;',
+    '  col += emerald * r3 * 0.55;',
+    '  col += cyan * r2 * 0.66;',
+    '  col += darkGreen * (r2 + r3) * 0.30;',
+    '  float bloom = exp(-pow(distance(uv, vec2(0.76, 0.40 + 0.035 * sin(t))), 2.0) / 0.050);',
+    '  bloom += exp(-pow(distance(uv, vec2(0.71, 0.75 + 0.025 * cos(t))), 2.0) / 0.030);',
+    '  col += moss * bloom * 0.45;',
+    '  vec2 grid = fract(gl_FragCoord.xy / 7.0) - 0.5;',
+    '  float dotShape = smoothstep(0.29, 0.11, length(grid));',
+    '  float noise = hash(floor(gl_FragCoord.xy / 7.0));',
+    '  float scan = 0.72 + 0.28 * sin((uv.x + uv.y) * 38.0 + time * 1.3);',
+    '  float dots = dotShape * (0.48 + 0.52 * noise) * scan;',
+    '  float micro = hash(gl_FragCoord.xy + time) * 0.035;',
+    '  float alpha = clamp((glow * 1.55 + bloom * 0.50) * dots * rightFade, 0.0, 1.0);',
+    '  alpha *= 1.0 - centerDark * 0.56;',
+    '  vec3 base = vec3(0.02, 0.04, 0.025);',
+    '  vec3 finalColor = mix(base, col, clamp(alpha * 1.75, 0.0, 1.0));',
+    '  finalColor += micro * rightFade * 0.6;',
+    '  gl_FragColor = vec4(finalColor, 1.0);',
+    '}'
+  ].join('\n');
+
+  var gl = canvas.getContext('webgl', { alpha: true, antialias: false, premultipliedAlpha: false });
+  if (!gl) return null;
+
+  function compile(type, src) {
+    var s = gl.createShader(type);
+    if (!s) return null;
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  }
+
+  var vert = compile(gl.VERTEX_SHADER, VERTEX_SRC);
+  var frag = compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC);
+  if (!vert || !frag) return null;
+
+  var prog = gl.createProgram();
+  gl.attachShader(prog, vert);
+  gl.attachShader(prog, frag);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(prog));
+    return null;
+  }
+  gl.useProgram(prog);
+
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+  var pos = gl.getAttribLocation(prog, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+
+  var uRes = gl.getUniformLocation(prog, 'resolution');
+  var uTime = gl.getUniformLocation(prog, 'time');
+  var uPtr = gl.getUniformLocation(prog, 'pointer');
+
+  var mouseX = 0.72, mouseY = 0.42, targetX = 0.72, targetY = 0.42;
+  var speedMultiplier = 1.0;
+  var startedAt = performance.now();
+  var frame = 0, visible = true;
+
+  function resize() {
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(window.innerWidth * ratio));
+    canvas.height = Math.max(1, Math.floor(window.innerHeight * ratio));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+  }
+
+  function pointer(e) {
+    targetX = 0.72 + ((e.clientX / Math.max(window.innerWidth, 1)) - 0.72) * 1.0;
+    targetY = 0.42 + ((1.0 - (e.clientY / Math.max(window.innerHeight, 1))) - 0.42) * 1.0;
+  }
+
+  function render(now) {
+    mouseX += (targetX - mouseX) * 0.035;
+    mouseY += (targetY - mouseY) * 0.035;
+    gl.uniform1f(uTime, (now - startedAt) * 0.001 * speedMultiplier);
+    gl.uniform2f(uPtr, mouseX, mouseY);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    frame = visible && !document.hidden ? requestAnimationFrame(render) : 0;
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('pointermove', pointer, { passive: true });
+  resize();
+  frame = requestAnimationFrame(render);
+
+  return {
+    setBusy: function(busy) {
+      speedMultiplier = busy ? 2.5 : 1.0;
+    }
+  };
+})();
+
+/* ======================================================================
+   COMMAND CENTER UNIFIED PRODUCT UX CLIENT
+   ====================================================================== */
+(function initCommandCenterApp() {
+  'use strict';
+
+  var API_BASE = (window.location.port === '8000')
+    ? window.location.origin
+    : (window.location.protocol.startsWith('http') ? (window.location.protocol + '//' + (window.location.hostname || '127.0.0.1') + ':8000') : 'http://127.0.0.1:8000');
+
+  var currentConversationId = null;
+  var isExecuting = false;
+
+  // Document Viewer State
+  var viewerState = {
+    isOpen: false,
+    filename: '',
+    page: 1,
+    totalPages: 1,
+    excerpt: '',
+    relevance: 0
+  };
+
+  // View Navigation
+  var views = ['workspace', 'overview', 'knowledge', 'agents', 'security', 'audit'];
+  function switchView(viewName) {
+    views.forEach(function(v) {
+      var pane = document.getElementById('view-' + v);
+      if (pane) pane.classList.toggle('active', v === viewName);
+    });
+    document.querySelectorAll('.nav-link').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
+    });
+    var scrollContainer = document.getElementById('main-scroll');
+    if (scrollContainer) scrollContainer.scrollTop = 0;
+
+    if (viewName === 'overview') loadOverview();
+    if (viewName === 'knowledge') loadKnowledge();
+    if (viewName === 'agents') loadAgents();
+    if (viewName === 'security') loadSecurity();
+    if (viewName === 'audit') loadAudit();
+  }
+
+  var initialHash = window.location.hash.replace('#', '');
+  if (views.indexOf(initialHash) !== -1) {
+    switchView(initialHash);
+  } else {
+    switchView('workspace');
+  }
+
+  document.querySelectorAll('.nav-link[data-view]').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchView(btn.getAttribute('data-view')); });
+  });
+  document.querySelectorAll('[data-goto]').forEach(function(el) {
+    el.addEventListener('click', function() { switchView(el.getAttribute('data-goto')); });
+  });
+
+  // System Status Check
+  function loadSystemStatus() {
+    fetch(API_BASE + '/api/system/mode')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var topPip = document.getElementById('top-status-pip');
+        var topLabel = document.getElementById('top-status-label');
+        var ovAi = document.getElementById('ov-ai-status');
+        var ovDocs = document.getElementById('ov-doc-count');
+
+        var isLocal = data.inference_mode === 'LOCAL_INFERENCE';
+        if (isLocal) {
+          if (topPip) topPip.classList.remove('demo-mode');
+          if (topLabel) topLabel.textContent = 'LOCAL AI';
+          if (ovAi) ovAi.innerHTML = '<span class="dot"></span>LOCAL INFERENCE (ONLINE)';
+        } else {
+          if (topPip) topPip.classList.add('demo-mode');
+          if (topLabel) topLabel.textContent = 'DEMO SIMULATION';
+          if (ovAi) ovAi.innerHTML = '<span class="dot demo"></span>DEMO SIMULATION';
+        }
+        if (ovDocs) ovDocs.innerHTML = '<span class="dot"></span>' + (data.chroma_docs || 0) + ' CHUNKS';
+      })
+      .catch(function(err) {
+        console.warn('System status check:', err);
+      });
+  }
+
+  // Available Documents Context Selector
+  function loadDocumentContextSelector() {
+    var selectEl = document.getElementById('doc-context-select');
+    if (!selectEl) return;
+    fetch(API_BASE + '/api/knowledge')
+      .then(function(res) { return res.json(); })
+      .then(function(docs) {
+        var currentVal = selectEl.value;
+        selectEl.innerHTML = '';
+        var allOpt = document.createElement('option');
+        allOpt.value = 'ALL';
+        allOpt.textContent = 'ALL DOCUMENTS (' + (docs ? docs.length : 0) + ')';
+        selectEl.appendChild(allOpt);
+
+        if (docs && docs.length > 0) {
+          docs.forEach(function(d) {
+            var opt = document.createElement('option');
+            opt.value = d.filename;
+            opt.textContent = d.filename + ' (' + d.page_count + ' ' + (d.file_type === 'PDF' ? 'pp' : 'sec') + ')';
+            selectEl.appendChild(opt);
+          });
+        }
+        if (currentVal) selectEl.value = currentVal;
+      })
+      .catch(function() {});
+  }
+
+  // Inline Add Knowledge Modal Controls
+  var wsBtnAddKnowledge = document.getElementById('ws-btn-add-knowledge');
+  var wsInlineModal = document.getElementById('ws-inline-upload-modal');
+  var wsModalClose = document.getElementById('ws-modal-close');
+  var wsDropzone = document.getElementById('ws-dropzone');
+  var wsFileInput = document.getElementById('ws-file-input');
+  var wsProgressBox = document.getElementById('ws-upload-progress');
+  var wsToast = document.getElementById('ws-upload-toast');
+  var wsToastMsg = document.getElementById('ws-upload-toast-msg');
+
+  if (wsBtnAddKnowledge) {
+    wsBtnAddKnowledge.addEventListener('click', function() {
+      wsInlineModal.classList.toggle('active');
+      if (wsToast) wsToast.classList.remove('active');
+    });
+  }
+  if (wsModalClose) {
+    wsModalClose.addEventListener('click', function() {
+      wsInlineModal.classList.remove('active');
+    });
+  }
+
+  var knowPageAddBtn = document.getElementById('know-page-add-btn');
+  if (knowPageAddBtn) {
+    knowPageAddBtn.addEventListener('click', function() {
+      switchView('workspace');
+      if (wsInlineModal) wsInlineModal.classList.add('active');
+    });
+  }
+
+  if (wsDropzone && wsFileInput) {
+    wsDropzone.addEventListener('click', function() { wsFileInput.click(); });
+    wsDropzone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      wsDropzone.style.borderColor = 'var(--moss)';
+      wsDropzone.style.background = 'rgba(52, 211, 153, 0.06)';
+    });
+    wsDropzone.addEventListener('dragleave', function() {
+      wsDropzone.style.borderColor = 'var(--line-focus)';
+      wsDropzone.style.background = 'rgba(52, 211, 153, 0.02)';
+    });
+    wsDropzone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      wsDropzone.style.borderColor = 'var(--line-focus)';
+      wsDropzone.style.background = 'rgba(52, 211, 153, 0.02)';
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        uploadWorkspaceFile(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  if (wsFileInput) {
+    wsFileInput.addEventListener('change', function(e) {
+      if (e.target.files && e.target.files[0]) {
+        uploadWorkspaceFile(e.target.files[0]);
+      }
+    });
+  }
+
+  function uploadWorkspaceFile(file) {
+    if (!wsProgressBox) return;
+    wsProgressBox.classList.add('active');
+    if (wsToast) wsToast.classList.remove('active');
+
+    function setUploadStage(num) {
+      for (var i = 1; i <= 4; i++) {
+        var row = document.getElementById('ws-u-' + i);
+        var span = document.getElementById('ws-u-' + i + '-s');
+        if (!row || !span) continue;
+        if (i < num) {
+          row.className = 'progress-row done';
+          span.textContent = 'DONE ✓';
+        } else if (i === num) {
+          row.className = 'progress-row active';
+          span.textContent = 'PROCESSING…';
+        } else {
+          row.className = 'progress-row';
+          span.textContent = 'WAITING';
+        }
+      }
+    }
+
+    setUploadStage(1);
+
+    var stageNum = 1;
+    var timer = setInterval(function() {
+      if (stageNum === 1) { stageNum = 2; setUploadStage(2); }
+      else if (stageNum === 2) { stageNum = 3; setUploadStage(3); }
+    }, 1100);
+
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch(API_BASE + '/api/knowledge/upload', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Upload failed: ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      clearInterval(timer);
+      for (var i = 1; i <= 4; i++) {
+        var r = document.getElementById('ws-u-' + i);
+        var s = document.getElementById('ws-u-' + i + '-s');
+        if (r) r.className = 'progress-row done';
+        if (s) s.textContent = 'DONE ✓';
+      }
+
+      setTimeout(function() {
+        if (wsProgressBox) wsProgressBox.classList.remove('active');
+        if (wsToast) {
+          wsToast.classList.add('active');
+          if (wsToastMsg) wsToastMsg.textContent = '✓ ' + data.filename + ' added to private knowledge (' + data.chunk_count + ' chunks)';
+        }
+        loadDocumentContextSelector();
+        loadSystemStatus();
+        loadKnowledge();
+      }, 900);
+    })
+    .catch(function(err) {
+      clearInterval(timer);
+      alert('Upload failed: ' + err.message);
+      if (wsProgressBox) wsProgressBox.classList.remove('active');
+    });
+  }
+
+  // History Drawer Controls
+  var btnToggleHistory = document.getElementById('btn-toggle-history');
+  var historyDrawer = document.getElementById('ws-history-drawer');
+  var historyContainer = document.getElementById('history-items-container');
+  var historyBadge = document.getElementById('history-badge-count');
+  var btnNewInvestigation = document.getElementById('btn-new-investigation');
+
+  if (btnToggleHistory && historyDrawer) {
+    btnToggleHistory.addEventListener('click', function() {
+      historyDrawer.classList.toggle('active');
+    });
+  }
+
+  if (btnNewInvestigation) {
+    btnNewInvestigation.addEventListener('click', function() {
+      currentConversationId = null;
+      var tc = document.getElementById('investigation-thread-container');
+      if (tc) tc.innerHTML = '';
+      var fa = document.getElementById('thread-followup-anchor');
+      if (fa) fa.innerHTML = '';
+      var pc = document.getElementById('primary-console-box');
+      if (pc) pc.style.display = 'flex';
+      var qi = document.getElementById('query-input');
+      if (qi) { qi.value = ''; qi.focus(); }
+      if (historyDrawer) historyDrawer.classList.remove('active');
+      closeDocumentViewer();
+    });
+  }
+
+  function loadHistory() {
+    fetch(API_BASE + '/api/investigations')
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        if (historyBadge) historyBadge.textContent = '(' + (list ? list.length : 0) + ')';
+        if (!historyContainer) return;
+        historyContainer.innerHTML = '';
+        if (!list || list.length === 0) {
+          historyContainer.innerHTML = '<div style="padding:14px; color:var(--ink-dim); font-size:11px; text-align:center;">No previous investigations yet.</div>';
+          return;
+        }
+        list.forEach(function(inv) {
+          var div = document.createElement('div');
+          div.className = 'history-item';
+          div.innerHTML =
+            '<div class="history-item-top">' +
+              '<span>' + escapeHtml(inv.updated_at) + ' &middot; ' + escapeHtml(inv.agent) + '</span>' +
+              '<span>' + inv.turn_count + ' turn' + (inv.turn_count === 1 ? '' : 's') + '</span>' +
+            '</div>' +
+            '<div class="history-item-q">' + escapeHtml(inv.title) + '</div>' +
+            (inv.preview ? '<div class="history-item-prev">' + escapeHtml(inv.preview) + '</div>' : '');
+
+          div.addEventListener('click', function() {
+            restoreInvestigation(inv.conversation_id);
+          });
+          historyContainer.appendChild(div);
+        });
+      })
+      .catch(function() {});
+  }
+
+  function restoreInvestigation(convId) {
+    if (!convId) return;
+    fetch(API_BASE + '/api/investigations/' + convId)
+      .then(function(res) {
+        if (!res.ok) throw new Error('Could not load investigation');
+        return res.json();
+      })
+      .then(function(detail) {
+        currentConversationId = detail.conversation_id;
+        var threadContainer = document.getElementById('investigation-thread-container');
+        if (threadContainer) threadContainer.innerHTML = '';
+        var pc = document.getElementById('primary-console-box');
+        if (pc) pc.style.display = 'none';
+
+        if (detail.messages && detail.messages.length > 0) {
+          detail.messages.forEach(function(turn) {
+            renderCompletedTurnCard(turn);
+          });
+        }
+        renderFollowupConsole();
+        if (historyDrawer) historyDrawer.classList.remove('active');
+      })
+      .catch(function(err) {
+        alert('Failed to restore investigation: ' + err.message);
+      });
+  }
+
+  // ======================================================================
+  // RIGHT-SIDE DOCUMENT VIEWER IMPLEMENTATION (CLAUDE-STYLE)
+  // ======================================================================
+  var wrapperEl = document.getElementById('workspace-wrapper');
+  var viewerDocnameEl = document.getElementById('viewer-doc-filename');
+  var viewerPageInfoEl = document.getElementById('viewer-doc-page-info');
+  var viewerHighlightText = document.getElementById('viewer-highlight-text');
+  var viewerHighlightBadge = document.getElementById('viewer-excerpt-badge-text');
+  var viewerFullText = document.getElementById('viewer-full-text');
+  var viewerPrevBtn = document.getElementById('viewer-prev-btn');
+  var viewerNextBtn = document.getElementById('viewer-next-btn');
+  var viewerCloseBtn = document.getElementById('viewer-close-btn');
+
+  function openDocumentViewer(filename, page, excerpt, relevance) {
+    viewerState.isOpen = true;
+    viewerState.filename = filename;
+    viewerState.page = parseInt(page, 10) || 1;
+    viewerState.excerpt = excerpt || '';
+    viewerState.relevance = relevance || 0;
+
+    if (wrapperEl) wrapperEl.classList.add('viewer-open');
+    if (viewerDocnameEl) viewerDocnameEl.textContent = filename;
+    if (viewerHighlightText) viewerHighlightText.textContent = excerpt ? ('"' + excerpt + '"') : '';
+    if (viewerHighlightBadge) viewerHighlightBadge.textContent = 'RETRIEVED EVIDENCE PASSAGE' + (relevance ? (' · RELEVANCE ' + relevance + '%') : '');
+
+    loadViewerPage(viewerState.filename, viewerState.page);
+  }
+
+  function closeDocumentViewer() {
+    viewerState.isOpen = false;
+    if (wrapperEl) wrapperEl.classList.remove('viewer-open');
+  }
+
+  function loadViewerPage(filename, pageNum) {
+    if (!viewerFullText) return;
+    viewerFullText.innerHTML = '<div style="color:var(--ink-dim); padding:10px 0;">Loading page ' + pageNum + ' from local storage…</div>';
+
+    fetch(API_BASE + '/api/knowledge/page?filename=' + encodeURIComponent(filename) + '&page=' + pageNum)
+      .then(function(res) {
+        if (!res.ok) throw new Error('Page not found');
+        return res.json();
+      })
+      .then(function(data) {
+        viewerState.page = data.page || pageNum;
+        viewerState.totalPages = data.total_pages || 1;
+
+        if (viewerPageInfoEl) {
+          var unitLabel = (data.file_type === 'PDF') ? 'PAGE' : (data.file_type === 'CSV' ? 'ROW GROUP' : 'SECTION');
+          viewerPageInfoEl.textContent = unitLabel + ' ' + viewerState.page + ' OF ' + viewerState.totalPages;
+        }
+
+        if (viewerPrevBtn) viewerPrevBtn.disabled = (viewerState.page <= 1);
+        if (viewerNextBtn) viewerNextBtn.disabled = (viewerState.page >= viewerState.totalPages);
+
+        if (data.page_text) {
+          viewerFullText.textContent = data.page_text;
+        } else {
+          viewerFullText.textContent = 'No additional text content found for this section.';
+        }
+      })
+      .catch(function() {
+        viewerFullText.textContent = 'Unable to extract local text for this page.';
+      });
+  }
+
+  if (viewerCloseBtn) viewerCloseBtn.addEventListener('click', closeDocumentViewer);
+  if (viewerPrevBtn) {
+    viewerPrevBtn.addEventListener('click', function() {
+      if (viewerState.page > 1) {
+        viewerState.page--;
+        loadViewerPage(viewerState.filename, viewerState.page);
+      }
+    });
+  }
+  if (viewerNextBtn) {
+    viewerNextBtn.addEventListener('click', function() {
+      if (viewerState.page < viewerState.totalPages) {
+        viewerState.page++;
+        loadViewerPage(viewerState.filename, viewerState.page);
+      }
+    });
+  }
+
+  // ======================================================================
+  // IN-THREAD EXECUTION & COMPLETED ANSWER RENDERING
+  // ======================================================================
+
+  var EXEC_STAGES = [
+    { id: 'st-req',   label: 'REQUEST CAPTURED',         desc: 'Role OPERATOR_L2 access validated' },
+    { id: 'st-rbac',  label: 'RBAC VERIFIED',            desc: 'Sovereign boundary access granted' },
+    { id: 'st-know',  label: 'SEARCHING KNOWLEDGE',      desc: 'Retrieving relevant private chunks' },
+    { id: 'st-agent', label: 'RUNNING MAINTENANCE AGENT',desc: 'Local bounded loop dispatched' },
+    { id: 'st-tool',  label: 'LOCAL TOOL INVOCATION',    desc: 'Semantic retrieval — zero external egress' },
+    { id: 'st-verify',label: 'LOCAL VERIFICATION',       desc: 'Cross-verifying source provenance' },
+    { id: 'st-llm',   label: 'LOCAL OLLAMA INFERENCE',   desc: 'Synthesizing evidence-backed response' }
+  ];
+
+  function createTurnExecutingCard(userQuery, turnId) {
+    var threadContainer = document.getElementById('investigation-thread-container');
+    var turnBox = document.createElement('div');
+    turnBox.className = 'thread-turn-box';
+    turnBox.id = 'turn-box-' + turnId;
+
+    var stepsHtml = '';
+    EXEC_STAGES.forEach(function(s, idx) {
+      stepsHtml +=
+        '<div class="exec-step-row' + (idx === 0 ? ' active' : '') + '" id="' + turnId + '-' + s.id + '">' +
+          '<span><span class="s-icon">' + (idx === 0 ? '●' : '○') + '</span> ' + escapeHtml(s.label) + '</span>' +
+          '<span class="step-status" id="' + turnId + '-' + s.id + '-st">' + (idx === 0 ? 'Processing…' : 'Waiting') + '</span>' +
+        '</div>';
+    });
+
+    turnBox.innerHTML =
+      '<div class="thread-user-query">' +
+        '<span class="user-avatar">OPERATOR</span>' +
+        '<div class="user-query-text">' + escapeHtml(userQuery) + '</div>' +
+      '</div>' +
+      '<div class="thread-executing-card" id="exec-card-' + turnId + '">' +
+        '<div class="exec-card-header">' +
+          '<div class="exec-spinner"></div>' +
+          '<span>INNERCORE IS INVESTIGATING…</span>' +
+        '</div>' +
+        '<div class="exec-step-list">' + stepsHtml + '</div>' +
+      '</div>';
+
+    threadContainer.appendChild(turnBox);
+
+    // Keep user smoothly anchored to the question without jump
+    turnBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    return turnBox;
+  }
+
+  function renderCompletedTurnCard(turn, targetTurnBox) {
+    var turnBox = targetTurnBox;
+    if (!turnBox) {
+      var threadContainer = document.getElementById('investigation-thread-container');
+      turnBox = document.createElement('div');
+      turnBox.className = 'thread-turn-box';
+      threadContainer.appendChild(turnBox);
+    }
+
+    // Referenced Evidence
+    var evidenceHtml = '';
+    if (turn.evidence && turn.evidence.length > 0) {
+      var seenKeys = {};
+      turn.evidence.forEach(function(ev, idx) {
+        var k = ev.filename + '::' + (ev.source_locator || ev.page) + '::' + (ev.excerpt || '').slice(0, 40);
+        if (seenKeys[k]) return;
+        seenKeys[k] = true;
+
+        var loc = ev.source_locator || ('Page ' + ev.page);
+        var pageNum = ev.page || 1;
+        var cleanExcerpt = escapeHtml(ev.excerpt || '');
+        var cleanFn = escapeHtml(ev.filename || '');
+
+        evidenceHtml +=
+          '<div class="evidence-pill" data-fn="' + cleanFn + '" data-page="' + pageNum + '" data-rel="' + ev.relevance + '">' +
+            '<div class="evidence-pill-head">' +
+              '<div class="name">📄 ' + cleanFn + '</div>' +
+              '<div class="action-hint">View Source Page ' + pageNum + ' &rarr;</div>' +
+            '</div>' +
+            '<div class="meta">' + escapeHtml(loc) + ' &middot; Relevance: ' + ev.relevance + '%</div>' +
+            (cleanExcerpt ? '<div class="excerpt">"' + cleanExcerpt + '…"</div>' : '') +
+          '</div>';
+      });
+    } else {
+      evidenceHtml = '<div style="padding:8px; font-size:11px; color:var(--ink-dim);">No direct evidence retrieved from private knowledge base.</div>';
+    }
+
+    // Trace readout
+    var traceHtml = '';
+    if (turn.steps && turn.steps.length > 0) {
+      turn.steps.forEach(function(s) {
+        traceHtml +=
+          '<div class="trace-line">' +
+            '<span class="t">' + (turn.timestamp || '') + '</span>' +
+            '<span class="e">' + escapeHtml(s.event) + '</span>' +
+            '<span class="s">' + escapeHtml(s.detail) + '</span>' +
+          '</div>';
+      });
+    }
+
+    var hashShort = (turn.entry_hash || '').slice(0, 16) + '…';
+
+    turnBox.innerHTML =
+      '<div class="thread-user-query">' +
+        '<span class="user-avatar">OPERATOR</span>' +
+        '<div class="user-query-text">' + escapeHtml(turn.user_request) + '</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="asset-callout">' + escapeHtml(turn.agent || 'Sovereign Agent') + ' Synthesis</div>' +
+        '<div class="status-headline">' +
+          '<span>' + escapeHtml((turn.agent || 'AGENT').toUpperCase()) + ' REPORT</span>' +
+          '<span class="status-tag ' + (turn.inference_mode === 'LOCAL_INFERENCE' ? '' : 'demo') + '">' +
+            (turn.inference_mode === 'LOCAL_INFERENCE' ? 'Status: Verified' : 'Demo Simulation') +
+          '</span>' +
+        '</div>' +
+        '<div class="result-prose">' + escapeHtml(turn.result || '') + '</div>' +
+
+        '<div class="asset-callout" style="margin-bottom:6px;">Referenced Evidence (Click to inspect source)</div>' +
+        '<div class="evidence-group">' + evidenceHtml + '</div>' +
+
+        '<div class="asset-callout" style="margin-bottom:6px;">Execution Summary</div>' +
+        '<table class="summary-spec">' +
+          '<tr><td>Agent</td><td>' + escapeHtml(turn.agent || 'Maintenance Agent') + '</td></tr>' +
+          '<tr><td>Inference Mode</td><td style="font-family:var(--mono); color:' + (turn.inference_mode === 'LOCAL_INFERENCE' ? 'var(--moss)' : 'var(--amber)') + ';">' + escapeHtml(turn.inference_mode || 'LOCAL_INFERENCE') + '</td></tr>' +
+          '<tr><td>Audit Hash</td><td style="font-family:var(--mono); font-size:9.5px; color:var(--ink-dim);" title="' + escapeHtml(turn.entry_hash) + '">' + hashShort + '</td></tr>' +
+        '</table>' +
+
+        '<div class="trace-compact">' +
+          '<div class="trace-compact-title">Agent Trace (Cryptographic Record)</div>' +
+          '<div>' + traceHtml + '</div>' +
+        '</div>' +
+      '</div>';
+
+    // Bind click events on all evidence pills in this card
+    turnBox.querySelectorAll('.evidence-pill').forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        var fn = pill.getAttribute('data-fn');
+        var page = parseInt(pill.getAttribute('data-page'), 10) || 1;
+        var rel = parseFloat(pill.getAttribute('data-rel')) || 0;
+        var excerptEl = pill.querySelector('.excerpt');
+        var excerpt = excerptEl ? excerptEl.textContent.replace(/^"|"…$/g, '') : '';
+        openDocumentViewer(fn, page, excerpt, rel);
+      });
+    });
+  }
+
+  function renderFollowupConsole() {
+    var anchor = document.getElementById('thread-followup-anchor');
+    if (!anchor) return;
+    anchor.innerHTML =
+      '<div class="followup-console-wrap">' +
+        '<div class="followup-console">' +
+          '<input type="text" id="followup-input" class="followup-input" placeholder="Ask a follow-up in this investigation…">' +
+          '<button class="followup-btn" id="followup-btn">Send &rarr;</button>' +
+        '</div>' +
+      '</div>';
+
+    var fInput = document.getElementById('followup-input');
+    var fBtn = document.getElementById('followup-btn');
+
+    if (fBtn && fInput) {
+      fBtn.addEventListener('click', function() {
+        var q = fInput.value.trim();
+        if (q) executeQuery(q);
+      });
+      fInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') fBtn.click();
+      });
+      fInput.focus();
+    }
+  }
+
+  function executeQuery(queryText) {
+    if (isExecuting) return;
+    isExecuting = true;
+
+    var turnId = 't-' + Date.now();
+    var turnBox = createTurnExecutingCard(queryText, turnId);
+
+    var runBtn = document.getElementById('run-btn');
+    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Executing…'; }
+    var fBtn = document.getElementById('followup-btn');
+    if (fBtn) { fBtn.disabled = true; fBtn.textContent = 'Sending…'; }
+
+    if (RibbonFieldController) RibbonFieldController.setBusy(true);
+
+    var stepIdx = 0;
+    var stepTimer = setInterval(function() {
+      if (stepIdx < EXEC_STAGES.length) {
+        if (stepIdx > 0) {
+          var prev = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx - 1].id);
+          var prevSt = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx - 1].id + '-st');
+          if (prev) {
+            prev.className = 'exec-step-row done';
+            var icon = prev.querySelector('.s-icon');
+            if (icon) icon.textContent = '✓';
+          }
+          if (prevSt) prevSt.textContent = 'Completed';
+        }
+        var curr = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx].id);
+        var currSt = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx].id + '-st');
+        if (curr) {
+          curr.className = 'exec-step-row active';
+          var cIcon = curr.querySelector('.s-icon');
+          if (cIcon) cIcon.textContent = '●';
+        }
+        if (currSt) currSt.textContent = 'Processing…';
+        stepIdx++;
+      }
+    }, 380);
+
+    var docFilterEl = document.getElementById('doc-context-select');
+    var docFilter = docFilterEl ? docFilterEl.value : 'ALL';
+
+    fetch(API_BASE + '/api/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request: queryText,
+        user_role: 'OPERATOR_L2',
+        agent_id: 'agent-maintenance',
+        conversation_id: currentConversationId,
+        doc_filter: docFilter
+      })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Execution failed with status: ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      clearInterval(stepTimer);
+      currentConversationId = data.conversation_id;
+
+      // Hide primary console on first query
+      var pc = document.getElementById('primary-console-box');
+      if (pc) pc.style.display = 'none';
+
+      // Render completed answer inside the same anchored turn box
+      renderCompletedTurnCard({
+        user_request: queryText,
+        agent: data.agent,
+        result: data.result,
+        timestamp: data.timestamp,
+        evidence: data.evidence,
+        steps: data.steps,
+        entry_hash: data.entry_hash,
+        inference_mode: data.inference_mode
+      }, turnBox);
+
+      // Render follow-up console below
+      renderFollowupConsole();
+
+      isExecuting = false;
+      if (runBtn) { runBtn.disabled = false; runBtn.textContent = 'Run →'; }
+      if (RibbonFieldController) RibbonFieldController.setBusy(false);
+
+      loadHistory();
+      loadAudit();
+      loadSystemStatus();
+    })
+    .catch(function(err) {
+      clearInterval(stepTimer);
+      isExecuting = false;
+      if (runBtn) { runBtn.disabled = false; runBtn.textContent = 'Run →'; }
+      if (RibbonFieldController) RibbonFieldController.setBusy(false);
+      var execCard = document.getElementById('exec-card-' + turnId);
+      if (execCard) {
+        execCard.innerHTML = '<div style="color:var(--red); font-size:12px;">Execution error: ' + escapeHtml(err.message) + '</div>';
+      }
+    });
+  }
+
+  // Primary Run button in Workspace
+  var runBtn = document.getElementById('run-btn');
+  var queryInput = document.getElementById('query-input');
+  if (runBtn && queryInput) {
+    runBtn.addEventListener('click', function() {
+      var q = queryInput.value.trim();
+      if (q) executeQuery(q);
+    });
+    queryInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') runBtn.click();
+    });
+  }
+
+  // Overview Data Loader
+  function loadOverview() {
+    loadSystemStatus();
+    var recentCont = document.getElementById('ov-recent-investigations');
+    if (!recentCont) return;
+    fetch(API_BASE + '/api/investigations')
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        if (!list || list.length === 0) {
+          recentCont.innerHTML = '<div style="padding:14px; color:var(--ink-dim); font-size:11.5px;">No previous investigations logged.</div>';
+          return;
+        }
+        recentCont.innerHTML = '';
+        list.slice(0, 4).forEach(function(inv) {
+          var div = document.createElement('div');
+          div.className = 'clean-item';
+          div.innerHTML =
+            '<div>' +
+              '<div class="t-primary">' + escapeHtml(inv.title) + '</div>' +
+              '<div class="t-meta">' + escapeHtml(inv.updated_at) + ' &middot; ' + escapeHtml(inv.agent) + ' &middot; ' + inv.turn_count + ' turns</div>' +
+            '</div>' +
+            '<button class="status-tag" style="cursor:pointer;" onclick="window.restoreFromOverview(\'' + inv.conversation_id + '\')">OPEN &rarr;</button>';
+          recentCont.appendChild(div);
+        });
+      })
+      .catch(function() {});
+  }
+
+  window.restoreFromOverview = function(convId) {
+    switchView('workspace');
+    restoreInvestigation(convId);
+  };
+
+  // Knowledge Documents List
+  function loadKnowledge() {
+    var knowContainer = document.getElementById('knowledge-doc-list');
+    if (!knowContainer) return;
+    fetch(API_BASE + '/api/knowledge')
+      .then(function(res) { return res.json(); })
+      .then(function(docs) {
+        knowContainer.innerHTML = '';
+        if (!docs || docs.length === 0) {
+          knowContainer.innerHTML = '<div style="padding:20px; color:var(--ink-dim); font-size:11.5px; text-align:center;">No private documents indexed yet. Upload via AI Workspace.</div>';
+          return;
+        }
+        docs.forEach(function(d) {
+          var div = document.createElement('div');
+          div.className = 'clean-item';
+          div.innerHTML =
+            '<div>' +
+              '<div class="t-primary">📄 ' + escapeHtml(d.filename) + '</div>' +
+              '<div class="t-meta">' + d.file_type + ' &middot; ' + d.page_count + ' ' + (d.file_type === 'PDF' ? 'pages' : 'sections') + ' &middot; ' + d.chunk_count + ' chunks embedded</div>' +
+            '</div>' +
+            '<span style="font-family:var(--mono); font-size:9.5px; color:var(--moss); background:var(--moss-glow); padding:2px 7px; border-radius:3px; border:1px solid var(--moss-line);">INDEXED</span>';
+          knowContainer.appendChild(div);
+        });
+      })
+      .catch(function() {
+        knowContainer.innerHTML = '<div style="padding:14px; color:var(--red); font-size:11.5px;">Failed to load knowledge documents from backend.</div>';
+      });
+  }
+
+  // Load Agents List
+  function loadAgents() {
+    var agentContainer = document.getElementById('agents-roster-list');
+    if (!agentContainer) return;
+    fetch(API_BASE + '/api/agents')
+      .then(function(res) { return res.json(); })
+      .then(function(agents) {
+        agentContainer.innerHTML = '';
+        agents.forEach(function(a) {
+          var div = document.createElement('div');
+          div.className = 'clean-item';
+          div.innerHTML =
+            '<div>' +
+              '<div class="t-primary">' + escapeHtml(a.name) + '</div>' +
+              '<div class="t-meta">' + escapeHtml(a.purpose) + ' &middot; Tools: ' + (a.tools || []).join(', ') + '</div>' +
+            '</div>' +
+            '<button class="status-tag" style="cursor:pointer;" onclick="dispatchAgent(\'' + a.id + '\')">DISPATCH &rarr;</button>';
+          agentContainer.appendChild(div);
+        });
+      })
+      .catch(function() {});
+  }
+
+  window.dispatchAgent = function(agentId) {
+    switchView('workspace');
+    var qi = document.getElementById('query-input');
+    if (qi) qi.value = 'Run diagnostic investigation with ' + agentId;
+  };
+
+  // Load Security Capabilities
+  function loadSecurity() {
+    var tbody = document.getElementById('security-table-body');
+    if (!tbody) return;
+    fetch(API_BASE + '/api/security')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.permissions) return;
+        tbody.innerHTML = '';
+        Object.keys(data.permissions).forEach(function(k) {
+          var val = data.permissions[k];
+          var color = val === 'ALLOWED' ? 'var(--moss)' : 'var(--red)';
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td style="text-transform:capitalize;">' + k.replace(/_/g, ' ') + '</td>' +
+            '<td style="color:' + color + '; font-family:var(--mono); font-weight:500;">' + val + '</td>' +
+            '<td style="color:var(--ink-dim); font-family:var(--mono);">' + data.boundary + '</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function() {});
+  }
+
+  // Load Audit Trail
+  function loadAudit() {
+    var tbody = document.getElementById('audit-table-body');
+    var empty = document.getElementById('audit-empty');
+    if (!tbody) return;
+    fetch(API_BASE + '/api/audit')
+      .then(function(res) { return res.json(); })
+      .then(function(entries) {
+        tbody.innerHTML = '';
+        if (!entries || entries.length === 0) {
+          if (empty) empty.style.display = 'block';
+          return;
+        }
+        if (empty) empty.style.display = 'none';
+        entries.forEach(function(entry) {
+          var tr = document.createElement('tr');
+          var hashShort = (entry.entry_hash || '').slice(0, 16) + '…';
+          tr.innerHTML =
+            '<td style="font-family:var(--mono); color:var(--ink-dim); font-size:10px;">' + escapeHtml(entry.timestamp) + '</td>' +
+            '<td>operator.l2</td>' +
+            '<td style="font-family:var(--mono); font-size:10px;">' + escapeHtml(entry.user_role) + '</td>' +
+            '<td style="color:var(--ink);">' + escapeHtml(entry.user_request) + '</td>' +
+            '<td>' + escapeHtml(entry.agent) + '</td>' +
+            '<td><span style="font-family:var(--mono); font-size:9.5px; color:var(--moss);">[' + escapeHtml(entry.status) + ']</span></td>' +
+            '<td style="font-family:var(--mono); font-size:9px; color:var(--ink-dim);" title="' + escapeHtml(entry.entry_hash) + '">' + hashShort + '</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function() {});
+  }
+
+  // Verify Audit Hash Chain
+  var verifyAuditBtn = document.getElementById('verify-audit-btn');
+  var chainBanner = document.getElementById('chain-verification-banner');
+  if (verifyAuditBtn) {
+    verifyAuditBtn.addEventListener('click', function() {
+      verifyAuditBtn.disabled = true;
+      verifyAuditBtn.textContent = 'Verifying…';
+      fetch(API_BASE + '/api/audit/verify')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          verifyAuditBtn.disabled = false;
+          verifyAuditBtn.textContent = 'Verify Chain →';
+          if (!chainBanner) return;
+          chainBanner.style.display = 'block';
+          if (data.chain_valid) {
+            chainBanner.innerHTML =
+              '<div class="verify-badge" style="width:100%; padding:8px 12px; font-size:10px; justify-content:center;">' +
+                '✓ TAMPER-EVIDENT AUDIT CHAIN VERIFIED: ' + data.verified_entries + '/' + data.total_entries + ' cryptographic SHA-256 blocks intact' +
+              '</div>';
+          } else {
+            chainBanner.innerHTML =
+              '<div class="verify-badge" style="width:100%; padding:8px 12px; font-size:10px; justify-content:center; color:var(--red); border-color:var(--red); background:rgba(217,83,79,0.1);">' +
+                '⚠ CHAIN INTEGRITY BREAK AT BLOCK: ' + data.broken_at +
+              '</div>';
+          }
+        })
+        .catch(function(err) {
+          verifyAuditBtn.disabled = false;
+          verifyAuditBtn.textContent = 'Verify Chain →';
+          alert('Verification request failed: ' + err.message);
+        });
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Initial Data Bootstrap
+  loadSystemStatus();
+  loadDocumentContextSelector();
+  loadHistory();
+  loadKnowledge();
+  loadAgents();
+  loadSecurity();
+  loadAudit();
+
+  console.log('[INNERCORE] Sovereign Command Center initialized with refined calm palette and split-panel document viewer.');
+})();
+</script>
+</body>
+</html>
