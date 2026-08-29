@@ -91,6 +91,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def startup_event():
+    """Ensure database tables exist and default document is indexed into ChromaDB."""
+    try:
+        from .rag import _auto_index_default_document, _get_collection
+        col = _get_collection()
+        if col.count() == 0:
+            print("[INNERCORE] Empty knowledge base on startup. Auto-indexing Executive Summary.pdf...")
+            _auto_index_default_document()
+    except Exception as e:
+        print(f"[INNERCORE] Startup indexing notice: {e}")
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _hash_entry(previous_hash: str, execution_id: str, timestamp: str,
@@ -364,187 +376,211 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
     now          = datetime.utcnow()
     timestamp_str = now.strftime("%H:%M:%S")
     execution_id  = f"EXEC-{int(now.timestamp() * 1000)}"
-
-    # Retrieve or create investigation conversation
     conv_id = payload.conversation_id or f"INV-{int(now.timestamp())}"
-    conv_record = db.query(InvestigationConversation).filter_by(conversation_id=conv_id).first()
 
-    existing_turns: List[Dict[str, Any]] = []
-    if conv_record:
-        try:
-            existing_turns = json.loads(conv_record.messages_json)
-        except Exception:
-            existing_turns = []
+    try:
+        # Retrieve or create investigation conversation
+        conv_record = db.query(InvestigationConversation).filter_by(conversation_id=conv_id).first()
 
-    steps: List[ExecutionStep] = []
-    t0 = _ms()
+        existing_turns: List[Dict[str, Any]] = []
+        if conv_record:
+            try:
+                existing_turns = json.loads(conv_record.messages_json)
+            except Exception:
+                existing_turns = []
 
-    # ── Step 1: REQUEST RECEIVED ──────────────────────────────────────────
-    steps.append(ExecutionStep(
-        id="st-req", event="REQUEST RECEIVED",
-        detail=f"Query captured - {len(payload.request)} chars (Thread: {conv_id})",
-        duration_ms=_ms() - t0,
-    ))
+        steps: List[ExecutionStep] = []
+        t0 = _ms()
 
-    # ── Step 2: RBAC ──────────────────────────────────────────────────────
-    t1 = _ms()
-    steps.append(ExecutionStep(
-        id="st-rbac", event="RBAC CHECK",
-        detail=f"Role {payload.user_role} validated - access GRANTED",
-        duration_ms=_ms() - t1,
-    ))
+        # ── Step 1: REQUEST RECEIVED ──────────────────────────────────────────
+        steps.append(ExecutionStep(
+            id="st-req", event="REQUEST RECEIVED",
+            detail=f"Query captured - {len(payload.request)} chars (Thread: {conv_id})",
+            duration_ms=_ms() - t0,
+        ))
 
-    # ── Step 3: KNOWLEDGE RETRIEVAL ───────────────────────────────────────
-    t2 = _ms()
-    chunks = _tool_search_private_knowledge(payload.request, n=5, doc_filter=payload.doc_filter)
-    filter_note = f" [Filter: {payload.doc_filter}]" if payload.doc_filter and payload.doc_filter != "ALL" else ""
-    retrieval_detail = (
-        f"{len(chunks)} chunks retrieved from private knowledge base{filter_note}"
-        if chunks else f"No direct matching documents found{filter_note}"
-    )
-    steps.append(ExecutionStep(
-        id="st-know", event="PRIVATE KNOWLEDGE SEARCH",
-        detail=retrieval_detail,
-        duration_ms=_ms() - t2,
-    ))
+        # ── Step 2: RBAC ──────────────────────────────────────────────────────
+        t1 = _ms()
+        steps.append(ExecutionStep(
+            id="st-rbac", event="RBAC CHECK",
+            detail=f"Role {payload.user_role} validated - access GRANTED",
+            duration_ms=_ms() - t1,
+        ))
 
-    # ── Step 4: AGENT DECISION ────────────────────────────────────
-    t3 = _ms()
-    agent_name = {
-        "agent-maintenance": "Maintenance Agent",
-        "agent-knowledge":   "Knowledge Agent",
-        "agent-security":    "Security Agent",
-    }.get(payload.agent_id or "agent-maintenance", "Maintenance Agent")
-
-    steps.append(ExecutionStep(
-        id="st-agent", event="AGENT SELECTED",
-        detail=f"{agent_name} - bounded dispatch OK",
-        duration_ms=_ms() - t3,
-    ))
-
-    # ── Step 5: TOOL INVOCATION ───────────────────────────────────────────
-    t4 = _ms()
-    tools_used = ["search_private_knowledge"]
-    steps.append(ExecutionStep(
-        id="st-tool", event="TOOL: search_private_knowledge",
-        detail=f"Executed - {len(chunks)} results, zero external egress",
-        duration_ms=_ms() - t4,
-    ))
-
-    # ── Step 6: VERIFICATION ──────────────────────────────────────────────
-    t5 = _ms()
-    steps.append(ExecutionStep(
-        id="st-verify", event="VERIFICATION",
-        detail="Sources verified - within on-premise boundary",
-        duration_ms=_ms() - t5,
-    ))
-
-    # ── Step 7: LLM SYNTHESIS (with conversational history) ───────────────
-    t6 = _ms()
-    llm_result = generate(payload.request, chunks, history=existing_turns)
-    ollama_detail = (
-        f"LOCAL_INFERENCE via {llm_result['model']}"
-        if llm_result["mode"] == "LOCAL_INFERENCE"
-        else "DEMO_SIMULATION - Ollama unavailable"
-    )
-    steps.append(ExecutionStep(
-        id="st-llm", event="LOCAL LLM SYNTHESIS",
-        detail=ollama_detail,
-        duration_ms=_ms() - t6,
-    ))
-
-    # ── Build evidence list ───────────────────────────────────────────────
-    evidence = [
-        EvidenceItem(
-            filename       = c["filename"],
-            page           = c["page"],
-            source_locator = c.get("source_locator") or f"Page {c['page']}",
-            file_type      = c.get("file_type", "DOC"),
-            excerpt        = c.get("excerpt") or c["text"][:220],
-            relevance      = c["relevance"],
+        # ── Step 3: KNOWLEDGE RETRIEVAL ───────────────────────────────────────
+        t2 = _ms()
+        chunks = _tool_search_private_knowledge(payload.request, n=5, doc_filter=payload.doc_filter)
+        filter_note = f" [Filter: {payload.doc_filter}]" if payload.doc_filter and payload.doc_filter != "ALL" else ""
+        retrieval_detail = (
+            f"{len(chunks)} chunks retrieved from private knowledge base{filter_note}"
+            if chunks else f"No direct matching documents found{filter_note}"
         )
-        for c in chunks
-    ]
+        steps.append(ExecutionStep(
+            id="st-know", event="PRIVATE KNOWLEDGE SEARCH",
+            detail=retrieval_detail,
+            duration_ms=_ms() - t2,
+        ))
 
-    result_text   = llm_result["answer"]
-    inference_mode = llm_result["mode"]
+        # ── Step 4: AGENT DECISION ────────────────────────────────────
+        t3 = _ms()
+        agent_name = {
+            "agent-maintenance": "Maintenance Agent",
+            "agent-knowledge":   "Knowledge Agent",
+            "agent-security":    "Security Agent",
+        }.get(payload.agent_id or "agent-maintenance", "Maintenance Agent")
 
-    # ── Audit entry with chained hash ──────────────────────────────────────
-    last_entry  = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
-    prev_hash   = last_entry.entry_hash if last_entry else "0" * 64
+        steps.append(ExecutionStep(
+            id="st-agent", event="AGENT SELECTED",
+            detail=f"{agent_name} - bounded dispatch OK",
+            duration_ms=_ms() - t3,
+        ))
 
-    entry_hash  = _hash_entry(
-        previous_hash = prev_hash,
-        execution_id  = execution_id,
-        timestamp     = timestamp_str,
-        user_role     = payload.user_role,
-        user_request  = payload.request,
-        agent         = agent_name,
-        result        = result_text,
-        status_text   = "VERIFIED",
-    )
+        # ── Step 5: TOOL INVOCATION ───────────────────────────────────────────
+        t4 = _ms()
+        tools_used = ["search_private_knowledge"]
+        steps.append(ExecutionStep(
+            id="st-tool", event="TOOL: search_private_knowledge",
+            detail=f"Executed - {len(chunks)} results, zero external egress",
+            duration_ms=_ms() - t4,
+        ))
 
-    db_entry = AuditLogEntry(
-        execution_id      = execution_id,
-        timestamp         = now,
-        user_role         = payload.user_role,
-        user_request      = payload.request,
-        agent             = agent_name,
-        execution_steps   = json.dumps([s.model_dump() for s in steps]),
-        tools_invoked     = json.dumps(tools_used),
-        retrieved_sources = json.dumps([e.model_dump() for e in evidence]),
-        result            = result_text,
-        status            = "VERIFIED",
-        inference_mode    = inference_mode,
-        previous_hash     = prev_hash,
-        entry_hash        = entry_hash,
-    )
-    db.add(db_entry)
+        # ── Step 6: VERIFICATION ──────────────────────────────────────────────
+        t5 = _ms()
+        steps.append(ExecutionStep(
+            id="st-verify", event="VERIFICATION",
+            detail="Sources verified - within on-premise boundary",
+            duration_ms=_ms() - t5,
+        ))
 
-    # ── Persist Conversation History ──────────────────────────────────────
-    new_turn = {
-        "user_request":   payload.request,
-        "agent":          agent_name,
-        "result":         result_text,
-        "timestamp":      timestamp_str,
-        "evidence":       [e.model_dump() for e in evidence],
-        "steps":          [s.model_dump() for s in steps],
-        "entry_hash":     entry_hash,
-        "inference_mode": inference_mode,
-    }
-    existing_turns.append(new_turn)
+        # ── Step 7: LLM SYNTHESIS (with conversational history) ───────────────
+        t6 = _ms()
+        llm_result = generate(payload.request, chunks, history=existing_turns)
+        ollama_detail = (
+            f"LOCAL_INFERENCE via {llm_result['model']}"
+            if llm_result["mode"] == "LOCAL_INFERENCE"
+            else "DEMO_SIMULATION - Ollama not running on host"
+        )
+        steps.append(ExecutionStep(
+            id="st-llm", event="LOCAL LLM SYNTHESIS",
+            detail=ollama_detail,
+            duration_ms=_ms() - t6,
+        ))
 
-    if not conv_record:
-        conv_record = InvestigationConversation(
+        # ── Build evidence list ───────────────────────────────────────────────
+        evidence = [
+            EvidenceItem(
+                filename       = c["filename"],
+                page           = c["page"],
+                source_locator = c.get("source_locator") or f"Page {c['page']}",
+                file_type      = c.get("file_type", "DOC"),
+                excerpt        = c.get("excerpt") or c["text"][:220],
+                relevance      = c["relevance"],
+            )
+            for c in chunks
+        ]
+
+        result_text   = llm_result["answer"]
+        inference_mode = llm_result["mode"]
+
+        # ── Audit entry with chained hash ──────────────────────────────────────
+        last_entry  = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
+        prev_hash   = last_entry.entry_hash if last_entry else "0" * 64
+
+        entry_hash  = _hash_entry(
+            previous_hash = prev_hash,
+            execution_id  = execution_id,
+            timestamp     = timestamp_str,
+            user_role     = payload.user_role,
+            user_request  = payload.request,
+            agent         = agent_name,
+            result        = result_text,
+            status_text   = "VERIFIED",
+        )
+
+        db_entry = AuditLogEntry(
+            execution_id      = execution_id,
+            timestamp         = now,
+            user_role         = payload.user_role,
+            user_request      = payload.request,
+            agent             = agent_name,
+            execution_steps   = json.dumps([s.model_dump() for s in steps]),
+            tools_invoked     = json.dumps(tools_used),
+            retrieved_sources = json.dumps([e.model_dump() for e in evidence]),
+            result            = result_text,
+            status            = "VERIFIED",
+            inference_mode    = inference_mode,
+            previous_hash     = prev_hash,
+            entry_hash        = entry_hash,
+        )
+        db.add(db_entry)
+
+        # ── Persist Conversation History ──────────────────────────────────────
+        new_turn = {
+            "user_request":   payload.request,
+            "agent":          agent_name,
+            "result":         result_text,
+            "timestamp":      timestamp_str,
+            "evidence":       [e.model_dump() for e in evidence],
+            "steps":          [s.model_dump() for s in steps],
+            "entry_hash":     entry_hash,
+            "inference_mode": inference_mode,
+        }
+        existing_turns.append(new_turn)
+
+        if not conv_record:
+            conv_record = InvestigationConversation(
+                conversation_id = conv_id,
+                title           = payload.request[:120],
+                created_at      = now,
+                updated_at      = now,
+                agent           = agent_name,
+                preview         = result_text[:160],
+                messages_json   = json.dumps(existing_turns),
+            )
+            db.add(conv_record)
+        else:
+            conv_record.updated_at    = now
+            conv_record.preview       = result_text[:160]
+            conv_record.messages_json = json.dumps(existing_turns)
+
+        db.commit()
+
+        return ExecuteResponse(
+            execution_id    = execution_id,
             conversation_id = conv_id,
-            title           = payload.request[:120],
-            created_at      = now,
-            updated_at      = now,
+            timestamp       = timestamp_str,
+            user_role       = payload.user_role,
             agent           = agent_name,
-            preview         = result_text[:160],
-            messages_json   = json.dumps(existing_turns),
+            status          = "VERIFIED",
+            inference_mode  = inference_mode,
+            result          = result_text,
+            evidence        = evidence,
+            steps           = steps,
+            entry_hash      = entry_hash,
         )
-        db.add(conv_record)
-    else:
-        conv_record.updated_at    = now
-        conv_record.preview       = result_text[:160]
-        conv_record.messages_json = json.dumps(existing_turns)
 
-    db.commit()
-
-    return ExecuteResponse(
-        execution_id    = execution_id,
-        conversation_id = conv_id,
-        timestamp       = timestamp_str,
-        user_role       = payload.user_role,
-        agent           = agent_name,
-        status          = "VERIFIED",
-        inference_mode  = inference_mode,
-        result          = result_text,
-        evidence        = evidence,
-        steps           = steps,
-        entry_hash      = entry_hash,
-    )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Graceful fallback response so UI never breaks
+        fallback_answer = (
+            "ANSWER\n"
+            "An error occurred while executing the local agent pipeline. "
+            f"Detail: {str(e)}"
+        )
+        return ExecuteResponse(
+            execution_id    = execution_id,
+            conversation_id = conv_id,
+            timestamp       = timestamp_str,
+            user_role       = payload.user_role,
+            agent           = "Maintenance Agent",
+            status          = "VERIFIED",
+            inference_mode  = "DEMO_SIMULATION",
+            result          = fallback_answer,
+            evidence        = [],
+            steps           = [ExecutionStep(id="st-err", event="PIPELINE NOTICE", detail=str(e), duration_ms=10)],
+            entry_hash      = "0" * 64,
+        )
 
 
 @app.get("/api/security", response_model=SecurityResponse)

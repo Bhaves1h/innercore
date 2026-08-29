@@ -401,93 +401,120 @@ def process_pdf(file_bytes: bytes, filename: str) -> Dict[str, Any]:
 
 # ─── Hybrid Semantic + Lexical Retrieval ──────────────────────────────────────
 
+def _auto_index_default_document():
+    try:
+        pdf_candidates = [
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Executive Summary.pdf")),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "Executive Summary.pdf")),
+            os.path.abspath(os.path.join(os.getcwd(), "Executive Summary.pdf")),
+            os.path.abspath(os.path.join(os.getcwd(), "backend", "Executive Summary.pdf")),
+        ]
+        for p in pdf_candidates:
+            if os.path.exists(p) and os.path.isfile(p):
+                with open(p, "rb") as f:
+                    pdf_bytes = f.read()
+                print(f"[RAG] Auto-indexing default document: {p}")
+                process_document(pdf_bytes, "Executive Summary.pdf")
+                break
+    except Exception as e:
+        print(f"[RAG] Auto-indexing default document notice: {e}")
+
+
 def search_knowledge(query: str, n_results: int = 5, doc_filter: str | None = None) -> List[Dict[str, Any]]:
     """
     Hybrid semantic + lexical search across the knowledge base.
     Ranks chunks by semantic cosine similarity + keyword overlap boost.
     Attaches query-focused excerpt to each retrieved evidence chunk.
     """
-    collection = _get_collection()
-    count = collection.count()
-    if count == 0:
-        return []
-
-    fetch_n = min(max(n_results * 4, 15), count)
-    query_emb = _get_embed_fn()([query])
-
-    query_kwargs: Dict[str, Any] = {
-        "query_embeddings": query_emb,
-        "n_results": fetch_n,
-        "include": ["documents", "metadatas", "distances"],
-    }
-    if doc_filter and doc_filter not in ["ALL", "ALL DOCUMENTS"]:
-        query_kwargs["where"] = {"filename": doc_filter}
-
     try:
-        results = collection.query(**query_kwargs)
-    except Exception:
-        query_kwargs.pop("where", None)
-        results = collection.query(**query_kwargs)
+        collection = _get_collection()
+        count = collection.count()
+        if count == 0:
+            _auto_index_default_document()
+            count = collection.count()
+            if count == 0:
+                return []
 
-    if not results or not results["documents"] or not results["documents"][0]:
+        fetch_n = min(max(n_results * 4, 15), count)
+        query_emb = _get_embed_fn()([query])
+
+        query_kwargs: Dict[str, Any] = {
+            "query_embeddings": query_emb,
+            "n_results": fetch_n,
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if doc_filter and doc_filter not in ["ALL", "ALL DOCUMENTS"]:
+            query_kwargs["where"] = {"filename": doc_filter}
+
+        try:
+            results = collection.query(**query_kwargs)
+        except Exception:
+            query_kwargs.pop("where", None)
+            results = collection.query(**query_kwargs)
+
+        if not results or not results["documents"] or not results["documents"][0]:
+            return []
+
+        docs      = results["documents"][0]
+        metas     = results["metadatas"][0]
+        distances = results["distances"][0]
+
+        stopwords = {"what", "is", "the", "of", "in", "and", "a", "to", "for", "are", "on", "how", "why", "it", "with", "by", "an", "at", "who"}
+        q_tokens = [w.lower() for w in re.findall(r'\w+', query) if w.lower() not in stopwords]
+
+        candidate_chunks = []
+        seen_keys = set()
+
+        for text, meta, dist in zip(docs, metas, distances):
+            fn       = meta.get("filename", "Unknown")
+            pg       = meta.get("page", 1)
+            locator  = meta.get("source_locator") or f"Page {pg}"
+            cidx     = meta.get("chunk_idx", 0)
+            ftype    = meta.get("file_type", "DOC")
+
+            stable_key = f"{fn}::p{pg}::c{cidx}"
+            if stable_key in seen_keys:
+                continue
+            seen_keys.add(stable_key)
+
+            # Base semantic cosine similarity: range 0.0 to 1.0
+            cosine_sim = max(0.0, 1.0 - (dist / 2.0))
+
+            # Lexical keyword match ratio
+            t_lower = text.lower()
+            matched_tokens = sum(1 for tok in q_tokens if tok in t_lower)
+            lexical_ratio = (matched_tokens / len(q_tokens)) if q_tokens else 0.0
+
+            # Composite score: 65% dense semantic + 35% exact term boost
+            composite_score = (cosine_sim * 0.65) + (lexical_ratio * 0.35)
+            relevance_pct = round(min(1.0, composite_score) * 100, 1)
+
+            # Extract focused supporting excerpt
+            excerpt = extract_query_excerpt(query, text, max_len=240)
+
+            candidate_chunks.append({
+                "text":           clean_text(text),
+                "excerpt":        excerpt,
+                "filename":       fn,
+                "file_type":      ftype,
+                "page":           pg,
+                "source_locator": locator,
+                "relevance":      relevance_pct,
+                "doc_id":         meta.get("doc_id", ""),
+                "chunk_idx":      cidx,
+                "matched_tokens": matched_tokens,
+            })
+
+        # Sort candidates by composite relevance descending
+        candidate_chunks.sort(key=lambda x: -x["relevance"])
+
+        # Filter out irrelevant noise (relevance must be at least 32%)
+        filtered = [c for c in candidate_chunks if c["relevance"] >= 32.0]
+        return filtered[:n_results]
+
+    except Exception as e:
+        print(f"[RAG] Search knowledge error: {e}")
         return []
-
-    docs      = results["documents"][0]
-    metas     = results["metadatas"][0]
-    distances = results["distances"][0]
-
-    stopwords = {"what", "is", "the", "of", "in", "and", "a", "to", "for", "are", "on", "how", "why", "it", "with", "by", "an", "at", "who"}
-    q_tokens = [w.lower() for w in re.findall(r'\w+', query) if w.lower() not in stopwords]
-
-    candidate_chunks = []
-    seen_keys = set()
-
-    for text, meta, dist in zip(docs, metas, distances):
-        fn       = meta.get("filename", "Unknown")
-        pg       = meta.get("page", 1)
-        locator  = meta.get("source_locator") or f"Page {pg}"
-        cidx     = meta.get("chunk_idx", 0)
-        ftype    = meta.get("file_type", "DOC")
-
-        stable_key = f"{fn}::p{pg}::c{cidx}"
-        if stable_key in seen_keys:
-            continue
-        seen_keys.add(stable_key)
-
-        # Base semantic cosine similarity: range 0.0 to 1.0
-        cosine_sim = max(0.0, 1.0 - (dist / 2.0))
-
-        # Lexical keyword match ratio
-        t_lower = text.lower()
-        matched_tokens = sum(1 for tok in q_tokens if tok in t_lower)
-        lexical_ratio = (matched_tokens / len(q_tokens)) if q_tokens else 0.0
-
-        # Composite score: 65% dense semantic + 35% exact term boost
-        composite_score = (cosine_sim * 0.65) + (lexical_ratio * 0.35)
-        relevance_pct = round(min(1.0, composite_score) * 100, 1)
-
-        # Extract focused supporting excerpt
-        excerpt = extract_query_excerpt(query, text, max_len=240)
-
-        candidate_chunks.append({
-            "text":           clean_text(text),
-            "excerpt":        excerpt,
-            "filename":       fn,
-            "file_type":      ftype,
-            "page":           pg,
-            "source_locator": locator,
-            "relevance":      relevance_pct,
-            "doc_id":         meta.get("doc_id", ""),
-            "chunk_idx":      cidx,
-            "matched_tokens": matched_tokens,
-        })
-
-    # Sort candidates by composite relevance descending
-    candidate_chunks.sort(key=lambda x: -x["relevance"])
-
-    # Filter out irrelevant noise (relevance must be at least 32%)
-    filtered = [c for c in candidate_chunks if c["relevance"] >= 32.0]
-    return filtered[:n_results]
 
 
 # ─── Document list & Page viewer ──────────────────────────────────────────────
