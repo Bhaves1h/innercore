@@ -630,11 +630,13 @@ def verify_audit_chain(db: Session = Depends(get_db)):
 # ─── Static Web Hosting & Landing Page ───────────────────────────────────────
 
 def _resolve_file(filename: str) -> str:
-    """Find a static file across possible working directory layouts."""
+    """Find a static file across all possible deployment directory layouts."""
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", filename)),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", filename)),
         os.path.abspath(os.path.join(os.getcwd(), filename)),
         os.path.abspath(os.path.join(os.getcwd(), "..", filename)),
+        os.path.abspath(os.path.join(os.getcwd(), "backend", filename)),
         os.path.abspath(filename),
     ]
     for p in candidates:
@@ -643,11 +645,13 @@ def _resolve_file(filename: str) -> str:
     return candidates[0]
 
 def _resolve_dir(dirname: str) -> str | None:
-    """Find a static directory across possible working directory layouts."""
+    """Find a static directory across all possible deployment directory layouts."""
     candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", dirname)),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", dirname)),
         os.path.abspath(os.path.join(os.getcwd(), dirname)),
         os.path.abspath(os.path.join(os.getcwd(), "..", dirname)),
+        os.path.abspath(os.path.join(os.getcwd(), "backend", dirname)),
         os.path.abspath(dirname),
     ]
     for p in candidates:
@@ -680,3 +684,20 @@ for asset_name in ["innercore-assets", "inner-green-assets", "src"]:
     found_dir = _resolve_dir(asset_name)
     if found_dir:
         app.mount(f"/{asset_name}", StaticFiles(directory=found_dir), name=asset_name)
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def catch_all_fallback(full_path: str):
+    """Catch-all for SPA navigation and static files, preventing 404 on refresh."""
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Check if a static file matches directly
+    direct = _resolve_file(full_path)
+    if os.path.exists(direct) and os.path.isfile(direct):
+        return FileResponse(direct)
+    
+    # If route matches command-center views
+    if any(k in full_path for k in ["command", "workspace", "knowledge", "agents", "security", "audit"]):
+        return FileResponse(_resolve_file("command-center.html"))
+        
+    return FileResponse(_resolve_file("index.html"))
