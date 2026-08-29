@@ -1421,9 +1421,16 @@ var RibbonFieldController = (function initRibbonFieldShader() {
 (function initCommandCenterApp() {
   'use strict';
 
-  var API_BASE = (window.location.port === '8000')
-    ? window.location.origin
-    : (window.location.protocol.startsWith('http') ? (window.location.protocol + '//' + (window.location.hostname || '127.0.0.1') + ':8000') : 'http://127.0.0.1:8000');
+  var API_BASE = '';
+  if (window.location.protocol.startsWith('http')) {
+    if (window.location.port === '8088') {
+      API_BASE = 'http://' + (window.location.hostname || '127.0.0.1') + ':8000';
+    } else {
+      API_BASE = window.location.origin;
+    }
+  } else {
+    API_BASE = 'http://127.0.0.1:8000';
+  }
 
   var currentConversationId = null;
   var isExecuting = false;

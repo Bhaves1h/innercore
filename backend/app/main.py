@@ -628,21 +628,55 @@ def verify_audit_chain(db: Session = Depends(get_db)):
     )
 
 # ─── Static Web Hosting & Landing Page ───────────────────────────────────────
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+def _resolve_file(filename: str) -> str:
+    """Find a static file across possible working directory layouts."""
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", filename)),
+        os.path.abspath(os.path.join(os.getcwd(), filename)),
+        os.path.abspath(os.path.join(os.getcwd(), "..", filename)),
+        os.path.abspath(filename),
+    ]
+    for p in candidates:
+        if os.path.exists(p) and os.path.isfile(p):
+            return p
+    return candidates[0]
+
+def _resolve_dir(dirname: str) -> str | None:
+    """Find a static directory across possible working directory layouts."""
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", dirname)),
+        os.path.abspath(os.path.join(os.getcwd(), dirname)),
+        os.path.abspath(os.path.join(os.getcwd(), "..", dirname)),
+        os.path.abspath(dirname),
+    ]
+    for p in candidates:
+        if os.path.exists(p) and os.path.isdir(p):
+            return p
+    return None
 
 @app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
 def get_landing_page():
-    return FileResponse(os.path.join(BASE_DIR, "index.html"))
+    path = _resolve_file("index.html")
+    return FileResponse(path)
 
 @app.get("/command-center.html", include_in_schema=False)
 @app.get("/command-center", include_in_schema=False)
+@app.get("/command-center/", include_in_schema=False)
+@app.get("/workspace", include_in_schema=False)
 def get_command_center_page():
-    return FileResponse(os.path.join(BASE_DIR, "command-center.html"))
+    path = _resolve_file("command-center.html")
+    return FileResponse(path)
 
 @app.get("/innercore.html", include_in_schema=False)
+@app.get("/innercore", include_in_schema=False)
 def get_innercore_page():
-    return FileResponse(os.path.join(BASE_DIR, "innercore.html"))
+    path = _resolve_file("innercore.html")
+    return FileResponse(path)
 
-assets_dir = os.path.join(BASE_DIR, "innercore-assets")
-if os.path.exists(assets_dir):
-    app.mount("/innercore-assets", StaticFiles(directory=assets_dir), name="innercore-assets")
+# Mount asset directories if present
+for asset_name in ["innercore-assets", "inner-green-assets", "src"]:
+    found_dir = _resolve_dir(asset_name)
+    if found_dir:
+        app.mount(f"/{asset_name}", StaticFiles(directory=found_dir), name=asset_name)
