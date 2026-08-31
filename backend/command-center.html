@@ -1392,1052 +1392,167 @@ html, body {
 </div>
 
 <!-- ======================================================================
-     THREEUI AUTHORED PREDICTIVE ARC — RIBBON FIELD SHADER RUNTIME (UNTOUCHED)
+     STRUCTURE FLOW: EMERALD HORIZON — THREE.JS AUTHORED SHADER RUNTIME
      ====================================================================== -->
+<script src="innercore-assets/three.min.js"></script>
 <script>
-var RibbonFieldController = (function initRibbonFieldShader() {
+var RibbonFieldController = (function initStructureFlowEmeraldHorizon() {
   var host = document.getElementById('ribbon-field-host');
   var canvas = document.getElementById('ribbon-field-canvas');
-  if (!host || !canvas) return null;
+  if (!host || !canvas || typeof THREE === 'undefined') return null;
 
-  var VERTEX_SRC = [
-    'attribute vec2 position;',
+  var scene = new THREE.Scene();
+  var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  var LUMINA_VERTEX_SHADER = [
+    'varying vec2 vUv;',
     'void main() {',
-    '  gl_Position = vec4(position, 0.0, 1.0);',
+    '  vUv = uv;',
+    '  gl_Position = vec4(position, 1.0);',
     '}'
   ].join('\n');
 
-  var FRAGMENT_SRC = [
+  var LUMINA_FRAGMENT_SHADER = [
     'precision highp float;',
-    'uniform vec2 resolution;',
-    'uniform float time;',
-    'uniform vec2 pointer;',
+    'uniform float u_time;',
+    'uniform vec2 u_resolution;',
+    'uniform float u_wave_scale;',
+    'uniform float u_variation;',
+    'uniform float u_glow;',
+    'uniform float u_vignette;',
+    'varying vec2 vUv;',
+    '',
     'float hash(vec2 p) {',
     '  p = fract(p * vec2(123.34, 456.21));',
     '  p += dot(p, p + 45.32);',
     '  return fract(p.x * p.y);',
     '}',
-    'float ribbon(vec2 uv, float offset, float width, float phase) {',
-    '  float y = 0.55 + 0.20 * sin((uv.x * 2.15) + phase) + 0.045 * sin((uv.x * 7.0) - phase * 0.7);',
-    '  float d = abs(uv.y - y - offset);',
-    '  return exp(-(d * d) / width);',
-    '}',
+    '',
     'void main() {',
-    '  vec2 uv = gl_FragCoord.xy / resolution.xy;',
-    '  vec2 p = uv;',
-    '  p.x *= resolution.x / resolution.y;',
-    '  float t = time * 0.24;',
-    '  float drift = (pointer.x - 0.5) * 0.06;',
-    '  float rightFade = smoothstep(0.28, 0.72, uv.x);',
-    '  float centerDark = 1.0 - smoothstep(0.0, 0.88, distance(uv, vec2(0.18, 0.48)));',
-    '  float r1 = ribbon(vec2(uv.x + drift, uv.y), 0.03, 0.0065, t + 0.9);',
-    '  float r2 = ribbon(vec2(uv.x - drift * 0.7, uv.y), -0.23, 0.0085, t + 3.25);',
-    '  float r3 = ribbon(vec2(uv.x + drift * 0.4, uv.y), 0.25, 0.014, t + 1.85);',
-    '  float glow = r1 * 1.14 + r2 * 1.05 + r3 * 0.48;',
-    '  vec3 moss = vec3(0.24, 0.94, 0.62);',
-    '  vec3 teal = vec3(0.17, 0.83, 0.75);',
-    '  vec3 cyan = vec3(0.22, 0.82, 0.96);',
-    '  vec3 emerald = vec3(0.10, 0.75, 0.45);',
-    '  vec3 darkGreen = vec3(0.05, 0.35, 0.20);',
-    '  vec3 col = vec3(0.0);',
-    '  col += moss * r1 * 1.25;',
-    '  col += teal * r1 * 0.62;',
-    '  col += emerald * r3 * 0.55;',
-    '  col += cyan * r2 * 0.66;',
-    '  col += darkGreen * (r2 + r3) * 0.30;',
-    '  float bloom = exp(-pow(distance(uv, vec2(0.76, 0.40 + 0.035 * sin(t))), 2.0) / 0.050);',
-    '  bloom += exp(-pow(distance(uv, vec2(0.71, 0.75 + 0.025 * cos(t))), 2.0) / 0.030);',
-    '  col += moss * bloom * 0.45;',
-    '  vec2 grid = fract(gl_FragCoord.xy / 7.0) - 0.5;',
-    '  float dotShape = smoothstep(0.29, 0.11, length(grid));',
-    '  float noise = hash(floor(gl_FragCoord.xy / 7.0));',
-    '  float scan = 0.72 + 0.28 * sin((uv.x + uv.y) * 38.0 + time * 1.3);',
-    '  float dots = dotShape * (0.48 + 0.52 * noise) * scan;',
-    '  float micro = hash(gl_FragCoord.xy + time) * 0.035;',
-    '  float alpha = clamp((glow * 1.55 + bloom * 0.50) * dots * rightFade, 0.0, 1.0);',
-    '  alpha *= 1.0 - centerDark * 0.56;',
-    '  vec3 base = vec3(0.02, 0.04, 0.025);',
-    '  vec3 finalColor = mix(base, col, clamp(alpha * 1.75, 0.0, 1.0));',
-    '  finalColor += micro * rightFade * 0.6;',
-    '  gl_FragColor = vec4(finalColor, 1.0);',
+    '  vec2 uv = gl_FragCoord.xy / u_resolution.xy;',
+    '  float t = u_time * 0.42;',
+    '  ',
+    '  // Authored Emerald Horizon layered harmonic waves',
+    '  float w1 = sin(uv.x * (3.2 * u_wave_scale) + t * 1.1) * 0.12 * u_variation;',
+    '  float w2 = sin(uv.x * (7.0 * u_wave_scale) - t * 0.85 + 1.4) * 0.055 * u_variation;',
+    '  float w3 = sin(uv.x * (13.5 * u_wave_scale) + t * 1.5 + 3.14) * 0.022 * u_variation;',
+    '  float horizon = 0.44 + w1 + w2 + w3;',
+    '  ',
+    '  float dist = abs(uv.y - horizon);',
+    '  float beam = exp(-dist * 20.0 / (0.16 + 0.16 * u_glow));',
+    '  float halo = exp(-dist * 4.8 / (0.52 + 0.48 * u_glow));',
+    '  ',
+    '  // Ethereal emerald horizon color palette',
+    '  vec3 c_deep = vec3(0.015, 0.04, 0.025);',
+    '  vec3 c_emerald = vec3(0.14, 0.88, 0.52);',
+    '  vec3 c_teal = vec3(0.20, 0.95, 0.78);',
+    '  vec3 c_cyan = vec3(0.18, 0.72, 0.92);',
+    '  vec3 c_core = vec3(0.75, 1.0, 0.90);',
+    '  ',
+    '  // Micro dot structure flow matrix texture',
+    '  vec2 grid = fract(gl_FragCoord.xy / 6.5) - 0.5;',
+    '  float dots = smoothstep(0.32, 0.06, length(grid)) * (0.60 + 0.40 * hash(floor(gl_FragCoord.xy / 6.5)));',
+    '  ',
+    '  vec3 col = c_deep;',
+    '  col += c_emerald * halo * 0.78;',
+    '  col += c_teal * beam * 1.15;',
+    '  col += c_cyan * pow(beam, 2.2) * 0.9;',
+    '  col += c_core * pow(beam, 4.5) * 1.25 * u_glow;',
+    '  col += c_emerald * dots * (halo * 0.40 + beam * 0.60);',
+    '  ',
+    '  // Soft atmospheric vignette',
+    '  float vig = 1.0 - length((uv - 0.5) * vec2(1.2, 0.9)) * 0.65 * u_vignette;',
+    '  vig = clamp(vig, 0.0, 1.0);',
+    '  col *= vig;',
+    '  ',
+    '  gl_FragColor = vec4(col, 1.0);',
     '}'
   ].join('\n');
 
-  var gl = canvas.getContext('webgl', { alpha: true, antialias: false, premultipliedAlpha: false });
-  if (!gl) return null;
+  var uniforms = {
+    u_time: { value: 0 },
+    u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    u_wave_scale: { value: 1.0 },
+    u_variation: { value: 1.0 },
+    u_glow: { value: 1.0 },
+    u_vignette: { value: 1.0 }
+  };
 
-  function compile(type, src) {
-    var s = gl.createShader(type);
-    if (!s) return null;
-    gl.shaderSource(s, src);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-      console.error(gl.getShaderInfoLog(s));
-      return null;
-    }
-    return s;
-  }
+  var material = new THREE.ShaderMaterial({
+    vertexShader: LUMINA_VERTEX_SHADER,
+    fragmentShader: LUMINA_FRAGMENT_SHADER,
+    uniforms: uniforms,
+    depthWrite: false,
+    depthTest: false
+  });
 
-  var vert = compile(gl.VERTEX_SHADER, VERTEX_SRC);
-  var frag = compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC);
-  if (!vert || !frag) return null;
+  var geometry = new THREE.PlaneGeometry(2, 2);
+  scene.add(new THREE.Mesh(geometry, material));
 
-  var prog = gl.createProgram();
-  gl.attachShader(prog, vert);
-  gl.attachShader(prog, frag);
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    console.error(gl.getProgramInfoLog(prog));
-    return null;
-  }
-  gl.useProgram(prog);
-
-  var buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
-
-  var pos = gl.getAttribLocation(prog, 'position');
-  gl.enableVertexAttribArray(pos);
-  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
-
-  var uRes = gl.getUniformLocation(prog, 'resolution');
-  var uTime = gl.getUniformLocation(prog, 'time');
-  var uPtr = gl.getUniformLocation(prog, 'pointer');
-
-  var mouseX = 0.72, mouseY = 0.42, targetX = 0.72, targetY = 0.42;
-  var speedMultiplier = 1.0;
-  var startedAt = performance.now();
-  var frame = 0, visible = true;
+  var isBusy = false;
+  var speedTarget = 1.0;
+  var speedCurrent = 1.0;
+  var glowTarget = 1.0;
+  var glowCurrent = 1.0;
+  var start = performance.now();
+  var frame = 0;
+  var isVisible = true;
 
   function resize() {
-    var ratio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.max(1, Math.floor(window.innerWidth * ratio));
-    canvas.height = Math.max(1, Math.floor(window.innerHeight * ratio));
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.uniform2f(uRes, canvas.width, canvas.height);
-  }
-
-  function pointer(e) {
-    targetX = 0.72 + ((e.clientX / Math.max(window.innerWidth, 1)) - 0.72) * 1.0;
-    targetY = 0.42 + ((1.0 - (e.clientY / Math.max(window.innerHeight, 1))) - 0.42) * 1.0;
+    var width = host.clientWidth || window.innerWidth;
+    var height = host.clientHeight || window.innerHeight;
+    renderer.setSize(width, height, false);
+    uniforms.u_resolution.value.set(width, height);
   }
 
   function render(now) {
-    mouseX += (targetX - mouseX) * 0.035;
-    mouseY += (targetY - mouseY) * 0.035;
-    gl.uniform1f(uTime, (now - startedAt) * 0.001 * speedMultiplier);
-    gl.uniform2f(uPtr, mouseX, mouseY);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-    frame = visible && !document.hidden ? requestAnimationFrame(render) : 0;
+    if (isBusy) {
+      speedTarget = 1.8;
+      glowTarget = 1.45;
+    } else {
+      speedTarget = 1.0;
+      glowTarget = 1.0;
+    }
+    speedCurrent += (speedTarget - speedCurrent) * 0.05;
+    glowCurrent += (glowTarget - glowCurrent) * 0.05;
+
+    uniforms.u_time.value = (now - start) * 0.001 * speedCurrent;
+    uniforms.u_glow.value = glowCurrent;
+
+    renderer.render(scene, camera);
+    if (isVisible && !document.hidden) {
+      frame = requestAnimationFrame(render);
+    } else {
+      frame = 0;
+    }
   }
 
   window.addEventListener('resize', resize);
-  window.addEventListener('pointermove', pointer, { passive: true });
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && !frame) {
+      frame = requestAnimationFrame(render);
+    }
+  });
+
+  var resizeObserver = new ResizeObserver(resize);
+  var intersection = new IntersectionObserver(function(entries) {
+    isVisible = (entries && entries[0]) ? entries[0].isIntersecting : true;
+    if (isVisible && !frame) frame = requestAnimationFrame(render);
+    if (!isVisible && frame) { cancelAnimationFrame(frame); frame = 0; }
+  });
+
+  resizeObserver.observe(host);
+  intersection.observe(host);
+
   resize();
   frame = requestAnimationFrame(render);
 
   return {
-    setBusy: function(busy) {
-      speedMultiplier = busy ? 2.5 : 1.0;
-    }
+    setBusy: function(busy) { isBusy = !!busy; },
+    getRenderer: function() { return renderer; }
   };
-})();
-
-/* ======================================================================
-   COMMAND CENTER UNIFIED PRODUCT UX CLIENT
-   ====================================================================== */
-(function initCommandCenterApp() {
-  'use strict';
-
-  var API_BASE = '';
-  if (window.location.protocol.startsWith('http')) {
-    if (window.location.port === '8088') {
-      API_BASE = 'http://' + (window.location.hostname || '127.0.0.1') + ':8000';
-    } else {
-      API_BASE = window.location.origin;
-    }
-  } else {
-    API_BASE = 'http://127.0.0.1:8000';
-  }
-
-  var currentConversationId = null;
-  var isExecuting = false;
-
-  // Document Viewer State
-  var viewerState = {
-    isOpen: false,
-    filename: '',
-    page: 1,
-    totalPages: 1,
-    excerpt: '',
-    relevance: 0
-  };
-
-  // View Navigation
-  var views = ['workspace', 'overview', 'knowledge', 'agents', 'security', 'audit'];
-  function switchView(viewName) {
-    views.forEach(function(v) {
-      var pane = document.getElementById('view-' + v);
-      if (pane) pane.classList.toggle('active', v === viewName);
-    });
-    document.querySelectorAll('.nav-link').forEach(function(btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-view') === viewName);
-    });
-    var scrollContainer = document.getElementById('main-scroll');
-    if (scrollContainer) scrollContainer.scrollTop = 0;
-
-    if (viewName === 'overview') loadOverview();
-    if (viewName === 'knowledge') loadKnowledge();
-    if (viewName === 'agents') loadAgents();
-    if (viewName === 'security') loadSecurity();
-    if (viewName === 'audit') loadAudit();
-  }
-
-  var initialHash = window.location.hash.replace('#', '');
-  if (views.indexOf(initialHash) !== -1) {
-    switchView(initialHash);
-  } else {
-    switchView('workspace');
-  }
-
-  document.querySelectorAll('.nav-link[data-view]').forEach(function(btn) {
-    btn.addEventListener('click', function() { switchView(btn.getAttribute('data-view')); });
-  });
-  document.querySelectorAll('[data-goto]').forEach(function(el) {
-    el.addEventListener('click', function() { switchView(el.getAttribute('data-goto')); });
-  });
-
-  // System Status Check
-  function loadSystemStatus() {
-    fetch(API_BASE + '/api/system/mode')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        var topPip = document.getElementById('top-status-pip');
-        var topLabel = document.getElementById('top-status-label');
-        var ovAi = document.getElementById('ov-ai-status');
-        var ovDocs = document.getElementById('ov-doc-count');
-
-        var isLocal = data.inference_mode === 'LOCAL_INFERENCE';
-        if (isLocal) {
-          if (topPip) topPip.classList.remove('demo-mode');
-          if (topLabel) topLabel.textContent = 'LOCAL AI';
-          if (ovAi) ovAi.innerHTML = '<span class="dot"></span>LOCAL INFERENCE (ONLINE)';
-        } else {
-          if (topPip) topPip.classList.add('demo-mode');
-          if (topLabel) topLabel.textContent = 'DEMO SIMULATION';
-          if (ovAi) ovAi.innerHTML = '<span class="dot demo"></span>DEMO SIMULATION';
-        }
-        if (ovDocs) ovDocs.innerHTML = '<span class="dot"></span>' + (data.chroma_docs || 0) + ' CHUNKS';
-      })
-      .catch(function(err) {
-        console.warn('System status check:', err);
-      });
-  }
-
-  // Available Documents Context Selector
-  function loadDocumentContextSelector() {
-    var selectEl = document.getElementById('doc-context-select');
-    if (!selectEl) return;
-    fetch(API_BASE + '/api/knowledge')
-      .then(function(res) { return res.json(); })
-      .then(function(docs) {
-        var currentVal = selectEl.value;
-        selectEl.innerHTML = '';
-        var allOpt = document.createElement('option');
-        allOpt.value = 'ALL';
-        allOpt.textContent = 'ALL DOCUMENTS (' + (docs ? docs.length : 0) + ')';
-        selectEl.appendChild(allOpt);
-
-        if (docs && docs.length > 0) {
-          docs.forEach(function(d) {
-            var opt = document.createElement('option');
-            opt.value = d.filename;
-            opt.textContent = d.filename + ' (' + d.page_count + ' ' + (d.file_type === 'PDF' ? 'pp' : 'sec') + ')';
-            selectEl.appendChild(opt);
-          });
-        }
-        if (currentVal) selectEl.value = currentVal;
-      })
-      .catch(function() {});
-  }
-
-  // Inline Add Knowledge Modal Controls
-  var wsBtnAddKnowledge = document.getElementById('ws-btn-add-knowledge');
-  var wsInlineModal = document.getElementById('ws-inline-upload-modal');
-  var wsModalClose = document.getElementById('ws-modal-close');
-  var wsDropzone = document.getElementById('ws-dropzone');
-  var wsFileInput = document.getElementById('ws-file-input');
-  var wsProgressBox = document.getElementById('ws-upload-progress');
-  var wsToast = document.getElementById('ws-upload-toast');
-  var wsToastMsg = document.getElementById('ws-upload-toast-msg');
-
-  if (wsBtnAddKnowledge) {
-    wsBtnAddKnowledge.addEventListener('click', function() {
-      wsInlineModal.classList.toggle('active');
-      if (wsToast) wsToast.classList.remove('active');
-    });
-  }
-  if (wsModalClose) {
-    wsModalClose.addEventListener('click', function() {
-      wsInlineModal.classList.remove('active');
-    });
-  }
-
-  var knowPageAddBtn = document.getElementById('know-page-add-btn');
-  if (knowPageAddBtn) {
-    knowPageAddBtn.addEventListener('click', function() {
-      switchView('workspace');
-      if (wsInlineModal) wsInlineModal.classList.add('active');
-    });
-  }
-
-  if (wsDropzone && wsFileInput) {
-    wsDropzone.addEventListener('click', function() { wsFileInput.click(); });
-    wsDropzone.addEventListener('dragover', function(e) {
-      e.preventDefault();
-      wsDropzone.style.borderColor = 'var(--moss)';
-      wsDropzone.style.background = 'rgba(52, 211, 153, 0.06)';
-    });
-    wsDropzone.addEventListener('dragleave', function() {
-      wsDropzone.style.borderColor = 'var(--line-focus)';
-      wsDropzone.style.background = 'rgba(52, 211, 153, 0.02)';
-    });
-    wsDropzone.addEventListener('drop', function(e) {
-      e.preventDefault();
-      wsDropzone.style.borderColor = 'var(--line-focus)';
-      wsDropzone.style.background = 'rgba(52, 211, 153, 0.02)';
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        uploadWorkspaceFile(e.dataTransfer.files[0]);
-      }
-    });
-  }
-
-  if (wsFileInput) {
-    wsFileInput.addEventListener('change', function(e) {
-      if (e.target.files && e.target.files[0]) {
-        uploadWorkspaceFile(e.target.files[0]);
-      }
-    });
-  }
-
-  function uploadWorkspaceFile(file) {
-    if (!wsProgressBox) return;
-    wsProgressBox.classList.add('active');
-    if (wsToast) wsToast.classList.remove('active');
-
-    function setUploadStage(num) {
-      for (var i = 1; i <= 4; i++) {
-        var row = document.getElementById('ws-u-' + i);
-        var span = document.getElementById('ws-u-' + i + '-s');
-        if (!row || !span) continue;
-        if (i < num) {
-          row.className = 'progress-row done';
-          span.textContent = 'DONE ✓';
-        } else if (i === num) {
-          row.className = 'progress-row active';
-          span.textContent = 'PROCESSING…';
-        } else {
-          row.className = 'progress-row';
-          span.textContent = 'WAITING';
-        }
-      }
-    }
-
-    setUploadStage(1);
-
-    var stageNum = 1;
-    var timer = setInterval(function() {
-      if (stageNum === 1) { stageNum = 2; setUploadStage(2); }
-      else if (stageNum === 2) { stageNum = 3; setUploadStage(3); }
-    }, 1100);
-
-    var formData = new FormData();
-    formData.append('file', file);
-
-    fetch(API_BASE + '/api/knowledge/upload', {
-      method: 'POST',
-      body: formData
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error('Upload failed: ' + res.status);
-      return res.json();
-    })
-    .then(function(data) {
-      clearInterval(timer);
-      for (var i = 1; i <= 4; i++) {
-        var r = document.getElementById('ws-u-' + i);
-        var s = document.getElementById('ws-u-' + i + '-s');
-        if (r) r.className = 'progress-row done';
-        if (s) s.textContent = 'DONE ✓';
-      }
-
-      setTimeout(function() {
-        if (wsProgressBox) wsProgressBox.classList.remove('active');
-        if (wsToast) {
-          wsToast.classList.add('active');
-          if (wsToastMsg) wsToastMsg.textContent = '✓ ' + data.filename + ' added to private knowledge (' + data.chunk_count + ' chunks)';
-        }
-        loadDocumentContextSelector();
-        loadSystemStatus();
-        loadKnowledge();
-      }, 900);
-    })
-    .catch(function(err) {
-      clearInterval(timer);
-      alert('Upload failed: ' + err.message);
-      if (wsProgressBox) wsProgressBox.classList.remove('active');
-    });
-  }
-
-  // History Drawer Controls
-  var btnToggleHistory = document.getElementById('btn-toggle-history');
-  var historyDrawer = document.getElementById('ws-history-drawer');
-  var historyContainer = document.getElementById('history-items-container');
-  var historyBadge = document.getElementById('history-badge-count');
-  var btnNewInvestigation = document.getElementById('btn-new-investigation');
-
-  if (btnToggleHistory && historyDrawer) {
-    btnToggleHistory.addEventListener('click', function() {
-      historyDrawer.classList.toggle('active');
-    });
-  }
-
-  if (btnNewInvestigation) {
-    btnNewInvestigation.addEventListener('click', function() {
-      currentConversationId = null;
-      var tc = document.getElementById('investigation-thread-container');
-      if (tc) tc.innerHTML = '';
-      var fa = document.getElementById('thread-followup-anchor');
-      if (fa) fa.innerHTML = '';
-      var pc = document.getElementById('primary-console-box');
-      if (pc) pc.style.display = 'flex';
-      var qi = document.getElementById('query-input');
-      if (qi) { qi.value = ''; qi.focus(); }
-      if (historyDrawer) historyDrawer.classList.remove('active');
-      closeDocumentViewer();
-    });
-  }
-
-  function loadHistory() {
-    fetch(API_BASE + '/api/investigations')
-      .then(function(res) { return res.json(); })
-      .then(function(list) {
-        if (historyBadge) historyBadge.textContent = '(' + (list ? list.length : 0) + ')';
-        if (!historyContainer) return;
-        historyContainer.innerHTML = '';
-        if (!list || list.length === 0) {
-          historyContainer.innerHTML = '<div style="padding:14px; color:var(--ink-dim); font-size:11px; text-align:center;">No previous investigations yet.</div>';
-          return;
-        }
-        list.forEach(function(inv) {
-          var div = document.createElement('div');
-          div.className = 'history-item';
-          div.innerHTML =
-            '<div class="history-item-top">' +
-              '<span>' + escapeHtml(inv.updated_at) + ' &middot; ' + escapeHtml(inv.agent) + '</span>' +
-              '<span>' + inv.turn_count + ' turn' + (inv.turn_count === 1 ? '' : 's') + '</span>' +
-            '</div>' +
-            '<div class="history-item-q">' + escapeHtml(inv.title) + '</div>' +
-            (inv.preview ? '<div class="history-item-prev">' + escapeHtml(inv.preview) + '</div>' : '');
-
-          div.addEventListener('click', function() {
-            restoreInvestigation(inv.conversation_id);
-          });
-          historyContainer.appendChild(div);
-        });
-      })
-      .catch(function() {});
-  }
-
-  function restoreInvestigation(convId) {
-    if (!convId) return;
-    fetch(API_BASE + '/api/investigations/' + convId)
-      .then(function(res) {
-        if (!res.ok) throw new Error('Could not load investigation');
-        return res.json();
-      })
-      .then(function(detail) {
-        currentConversationId = detail.conversation_id;
-        var threadContainer = document.getElementById('investigation-thread-container');
-        if (threadContainer) threadContainer.innerHTML = '';
-        var pc = document.getElementById('primary-console-box');
-        if (pc) pc.style.display = 'none';
-
-        if (detail.messages && detail.messages.length > 0) {
-          detail.messages.forEach(function(turn) {
-            renderCompletedTurnCard(turn);
-          });
-        }
-        renderFollowupConsole();
-        if (historyDrawer) historyDrawer.classList.remove('active');
-      })
-      .catch(function(err) {
-        alert('Failed to restore investigation: ' + err.message);
-      });
-  }
-
-  // ======================================================================
-  // RIGHT-SIDE DOCUMENT VIEWER IMPLEMENTATION (CLAUDE-STYLE)
-  // ======================================================================
-  var wrapperEl = document.getElementById('workspace-wrapper');
-  var viewerDocnameEl = document.getElementById('viewer-doc-filename');
-  var viewerPageInfoEl = document.getElementById('viewer-doc-page-info');
-  var viewerHighlightText = document.getElementById('viewer-highlight-text');
-  var viewerHighlightBadge = document.getElementById('viewer-excerpt-badge-text');
-  var viewerFullText = document.getElementById('viewer-full-text');
-  var viewerPrevBtn = document.getElementById('viewer-prev-btn');
-  var viewerNextBtn = document.getElementById('viewer-next-btn');
-  var viewerCloseBtn = document.getElementById('viewer-close-btn');
-
-  function openDocumentViewer(filename, page, excerpt, relevance) {
-    viewerState.isOpen = true;
-    viewerState.filename = filename;
-    viewerState.page = parseInt(page, 10) || 1;
-    viewerState.excerpt = excerpt || '';
-    viewerState.relevance = relevance || 0;
-
-    if (wrapperEl) wrapperEl.classList.add('viewer-open');
-    if (viewerDocnameEl) viewerDocnameEl.textContent = filename;
-    if (viewerHighlightText) viewerHighlightText.textContent = excerpt ? ('"' + excerpt + '"') : '';
-    if (viewerHighlightBadge) viewerHighlightBadge.textContent = 'RETRIEVED EVIDENCE PASSAGE' + (relevance ? (' · RELEVANCE ' + relevance + '%') : '');
-
-    loadViewerPage(viewerState.filename, viewerState.page);
-  }
-
-  function closeDocumentViewer() {
-    viewerState.isOpen = false;
-    if (wrapperEl) wrapperEl.classList.remove('viewer-open');
-  }
-
-  function loadViewerPage(filename, pageNum) {
-    if (!viewerFullText) return;
-    viewerFullText.innerHTML = '<div style="color:var(--ink-dim); padding:10px 0;">Loading page ' + pageNum + ' from local storage…</div>';
-
-    fetch(API_BASE + '/api/knowledge/page?filename=' + encodeURIComponent(filename) + '&page=' + pageNum)
-      .then(function(res) {
-        if (!res.ok) throw new Error('Page not found');
-        return res.json();
-      })
-      .then(function(data) {
-        viewerState.page = data.page || pageNum;
-        viewerState.totalPages = data.total_pages || 1;
-
-        if (viewerPageInfoEl) {
-          var unitLabel = (data.file_type === 'PDF') ? 'PAGE' : (data.file_type === 'CSV' ? 'ROW GROUP' : 'SECTION');
-          viewerPageInfoEl.textContent = unitLabel + ' ' + viewerState.page + ' OF ' + viewerState.totalPages;
-        }
-
-        if (viewerPrevBtn) viewerPrevBtn.disabled = (viewerState.page <= 1);
-        if (viewerNextBtn) viewerNextBtn.disabled = (viewerState.page >= viewerState.totalPages);
-
-        if (data.page_text) {
-          viewerFullText.textContent = data.page_text;
-        } else {
-          viewerFullText.textContent = 'No additional text content found for this section.';
-        }
-      })
-      .catch(function() {
-        viewerFullText.textContent = 'Unable to extract local text for this page.';
-      });
-  }
-
-  if (viewerCloseBtn) viewerCloseBtn.addEventListener('click', closeDocumentViewer);
-  if (viewerPrevBtn) {
-    viewerPrevBtn.addEventListener('click', function() {
-      if (viewerState.page > 1) {
-        viewerState.page--;
-        loadViewerPage(viewerState.filename, viewerState.page);
-      }
-    });
-  }
-  if (viewerNextBtn) {
-    viewerNextBtn.addEventListener('click', function() {
-      if (viewerState.page < viewerState.totalPages) {
-        viewerState.page++;
-        loadViewerPage(viewerState.filename, viewerState.page);
-      }
-    });
-  }
-
-  // ======================================================================
-  // IN-THREAD EXECUTION & COMPLETED ANSWER RENDERING
-  // ======================================================================
-
-  var EXEC_STAGES = [
-    { id: 'st-req',   label: 'REQUEST CAPTURED',         desc: 'Role OPERATOR_L2 access validated' },
-    { id: 'st-rbac',  label: 'RBAC VERIFIED',            desc: 'Sovereign boundary access granted' },
-    { id: 'st-know',  label: 'SEARCHING KNOWLEDGE',      desc: 'Retrieving relevant private chunks' },
-    { id: 'st-agent', label: 'RUNNING MAINTENANCE AGENT',desc: 'Local bounded loop dispatched' },
-    { id: 'st-tool',  label: 'LOCAL TOOL INVOCATION',    desc: 'Semantic retrieval — zero external egress' },
-    { id: 'st-verify',label: 'LOCAL VERIFICATION',       desc: 'Cross-verifying source provenance' },
-    { id: 'st-llm',   label: 'LOCAL OLLAMA INFERENCE',   desc: 'Synthesizing evidence-backed response' }
-  ];
-
-  function createTurnExecutingCard(userQuery, turnId) {
-    var threadContainer = document.getElementById('investigation-thread-container');
-    var turnBox = document.createElement('div');
-    turnBox.className = 'thread-turn-box';
-    turnBox.id = 'turn-box-' + turnId;
-
-    var stepsHtml = '';
-    EXEC_STAGES.forEach(function(s, idx) {
-      stepsHtml +=
-        '<div class="exec-step-row' + (idx === 0 ? ' active' : '') + '" id="' + turnId + '-' + s.id + '">' +
-          '<span><span class="s-icon">' + (idx === 0 ? '●' : '○') + '</span> ' + escapeHtml(s.label) + '</span>' +
-          '<span class="step-status" id="' + turnId + '-' + s.id + '-st">' + (idx === 0 ? 'Processing…' : 'Waiting') + '</span>' +
-        '</div>';
-    });
-
-    turnBox.innerHTML =
-      '<div class="thread-user-query">' +
-        '<span class="user-avatar">OPERATOR</span>' +
-        '<div class="user-query-text">' + escapeHtml(userQuery) + '</div>' +
-      '</div>' +
-      '<div class="thread-executing-card" id="exec-card-' + turnId + '">' +
-        '<div class="exec-card-header">' +
-          '<div class="exec-spinner"></div>' +
-          '<span>INNERCORE IS INVESTIGATING…</span>' +
-        '</div>' +
-        '<div class="exec-step-list">' + stepsHtml + '</div>' +
-      '</div>';
-
-    threadContainer.appendChild(turnBox);
-
-    // Keep user smoothly anchored to the question without jump
-    turnBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    return turnBox;
-  }
-
-  function renderCompletedTurnCard(turn, targetTurnBox) {
-    var turnBox = targetTurnBox;
-    if (!turnBox) {
-      var threadContainer = document.getElementById('investigation-thread-container');
-      turnBox = document.createElement('div');
-      turnBox.className = 'thread-turn-box';
-      threadContainer.appendChild(turnBox);
-    }
-
-    // Referenced Evidence
-    var evidenceHtml = '';
-    if (turn.evidence && turn.evidence.length > 0) {
-      var seenKeys = {};
-      turn.evidence.forEach(function(ev, idx) {
-        var k = ev.filename + '::' + (ev.source_locator || ev.page) + '::' + (ev.excerpt || '').slice(0, 40);
-        if (seenKeys[k]) return;
-        seenKeys[k] = true;
-
-        var loc = ev.source_locator || ('Page ' + ev.page);
-        var pageNum = ev.page || 1;
-        var cleanExcerpt = escapeHtml(ev.excerpt || '');
-        var cleanFn = escapeHtml(ev.filename || '');
-
-        evidenceHtml +=
-          '<div class="evidence-pill" data-fn="' + cleanFn + '" data-page="' + pageNum + '" data-rel="' + ev.relevance + '">' +
-            '<div class="evidence-pill-head">' +
-              '<div class="name">📄 ' + cleanFn + '</div>' +
-              '<div class="action-hint">View Source Page ' + pageNum + ' &rarr;</div>' +
-            '</div>' +
-            '<div class="meta">' + escapeHtml(loc) + ' &middot; Relevance: ' + ev.relevance + '%</div>' +
-            (cleanExcerpt ? '<div class="excerpt">"' + cleanExcerpt + '…"</div>' : '') +
-          '</div>';
-      });
-    } else {
-      evidenceHtml = '<div style="padding:8px; font-size:11px; color:var(--ink-dim);">No direct evidence retrieved from private knowledge base.</div>';
-    }
-
-    // Trace readout
-    var traceHtml = '';
-    if (turn.steps && turn.steps.length > 0) {
-      turn.steps.forEach(function(s) {
-        traceHtml +=
-          '<div class="trace-line">' +
-            '<span class="t">' + (turn.timestamp || '') + '</span>' +
-            '<span class="e">' + escapeHtml(s.event) + '</span>' +
-            '<span class="s">' + escapeHtml(s.detail) + '</span>' +
-          '</div>';
-      });
-    }
-
-    var hashShort = (turn.entry_hash || '').slice(0, 16) + '…';
-
-    turnBox.innerHTML =
-      '<div class="thread-user-query">' +
-        '<span class="user-avatar">OPERATOR</span>' +
-        '<div class="user-query-text">' + escapeHtml(turn.user_request) + '</div>' +
-      '</div>' +
-      '<div>' +
-        '<div class="asset-callout">' + escapeHtml(turn.agent || 'Sovereign Agent') + ' Synthesis</div>' +
-        '<div class="status-headline">' +
-          '<span>' + escapeHtml((turn.agent || 'AGENT').toUpperCase()) + ' REPORT</span>' +
-          '<span class="status-tag ' + (turn.inference_mode === 'LOCAL_INFERENCE' ? '' : 'demo') + '">' +
-            (turn.inference_mode === 'LOCAL_INFERENCE' ? 'Status: Verified' : 'Demo Simulation') +
-          '</span>' +
-        '</div>' +
-        '<div class="result-prose">' + escapeHtml(turn.result || '') + '</div>' +
-
-        '<div class="asset-callout" style="margin-bottom:6px;">Referenced Evidence (Click to inspect source)</div>' +
-        '<div class="evidence-group">' + evidenceHtml + '</div>' +
-
-        '<div class="asset-callout" style="margin-bottom:6px;">Execution Summary</div>' +
-        '<table class="summary-spec">' +
-          '<tr><td>Agent</td><td>' + escapeHtml(turn.agent || 'Maintenance Agent') + '</td></tr>' +
-          '<tr><td>Inference Mode</td><td style="font-family:var(--mono); color:' + (turn.inference_mode === 'LOCAL_INFERENCE' ? 'var(--moss)' : 'var(--amber)') + ';">' + escapeHtml(turn.inference_mode || 'LOCAL_INFERENCE') + '</td></tr>' +
-          '<tr><td>Audit Hash</td><td style="font-family:var(--mono); font-size:9.5px; color:var(--ink-dim);" title="' + escapeHtml(turn.entry_hash) + '">' + hashShort + '</td></tr>' +
-        '</table>' +
-
-        '<div class="trace-compact">' +
-          '<div class="trace-compact-title">Agent Trace (Cryptographic Record)</div>' +
-          '<div>' + traceHtml + '</div>' +
-        '</div>' +
-      '</div>';
-
-    // Bind click events on all evidence pills in this card
-    turnBox.querySelectorAll('.evidence-pill').forEach(function(pill) {
-      pill.addEventListener('click', function() {
-        var fn = pill.getAttribute('data-fn');
-        var page = parseInt(pill.getAttribute('data-page'), 10) || 1;
-        var rel = parseFloat(pill.getAttribute('data-rel')) || 0;
-        var excerptEl = pill.querySelector('.excerpt');
-        var excerpt = excerptEl ? excerptEl.textContent.replace(/^"|"…$/g, '') : '';
-        openDocumentViewer(fn, page, excerpt, rel);
-      });
-    });
-  }
-
-  function renderFollowupConsole() {
-    var anchor = document.getElementById('thread-followup-anchor');
-    if (!anchor) return;
-    anchor.innerHTML =
-      '<div class="followup-console-wrap">' +
-        '<div class="followup-console">' +
-          '<input type="text" id="followup-input" class="followup-input" placeholder="Ask a follow-up in this investigation…">' +
-          '<button class="followup-btn" id="followup-btn">Send &rarr;</button>' +
-        '</div>' +
-      '</div>';
-
-    var fInput = document.getElementById('followup-input');
-    var fBtn = document.getElementById('followup-btn');
-
-    if (fBtn && fInput) {
-      fBtn.addEventListener('click', function() {
-        var q = fInput.value.trim();
-        if (q) executeQuery(q);
-      });
-      fInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') fBtn.click();
-      });
-      fInput.focus();
-    }
-  }
-
-  function executeQuery(queryText) {
-    if (isExecuting) return;
-    isExecuting = true;
-
-    var turnId = 't-' + Date.now();
-    var turnBox = createTurnExecutingCard(queryText, turnId);
-
-    var runBtn = document.getElementById('run-btn');
-    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Executing…'; }
-    var fBtn = document.getElementById('followup-btn');
-    if (fBtn) { fBtn.disabled = true; fBtn.textContent = 'Sending…'; }
-
-    if (RibbonFieldController) RibbonFieldController.setBusy(true);
-
-    var stepIdx = 0;
-    var stepTimer = setInterval(function() {
-      if (stepIdx < EXEC_STAGES.length) {
-        if (stepIdx > 0) {
-          var prev = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx - 1].id);
-          var prevSt = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx - 1].id + '-st');
-          if (prev) {
-            prev.className = 'exec-step-row done';
-            var icon = prev.querySelector('.s-icon');
-            if (icon) icon.textContent = '✓';
-          }
-          if (prevSt) prevSt.textContent = 'Completed';
-        }
-        var curr = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx].id);
-        var currSt = document.getElementById(turnId + '-' + EXEC_STAGES[stepIdx].id + '-st');
-        if (curr) {
-          curr.className = 'exec-step-row active';
-          var cIcon = curr.querySelector('.s-icon');
-          if (cIcon) cIcon.textContent = '●';
-        }
-        if (currSt) currSt.textContent = 'Processing…';
-        stepIdx++;
-      }
-    }, 380);
-
-    var docFilterEl = document.getElementById('doc-context-select');
-    var docFilter = docFilterEl ? docFilterEl.value : 'ALL';
-
-    fetch(API_BASE + '/api/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        request: queryText,
-        user_role: 'OPERATOR_L2',
-        agent_id: 'agent-maintenance',
-        conversation_id: currentConversationId,
-        doc_filter: docFilter
-      })
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error('Execution failed with status: ' + res.status);
-      return res.json();
-    })
-    .then(function(data) {
-      clearInterval(stepTimer);
-      currentConversationId = data.conversation_id;
-
-      // Hide primary console on first query
-      var pc = document.getElementById('primary-console-box');
-      if (pc) pc.style.display = 'none';
-
-      // Render completed answer inside the same anchored turn box
-      renderCompletedTurnCard({
-        user_request: queryText,
-        agent: data.agent,
-        result: data.result,
-        timestamp: data.timestamp,
-        evidence: data.evidence,
-        steps: data.steps,
-        entry_hash: data.entry_hash,
-        inference_mode: data.inference_mode
-      }, turnBox);
-
-      // Render follow-up console below
-      renderFollowupConsole();
-
-      isExecuting = false;
-      if (runBtn) { runBtn.disabled = false; runBtn.textContent = 'Run →'; }
-      if (RibbonFieldController) RibbonFieldController.setBusy(false);
-
-      loadHistory();
-      loadAudit();
-      loadSystemStatus();
-    })
-    .catch(function(err) {
-      clearInterval(stepTimer);
-      isExecuting = false;
-      if (runBtn) { runBtn.disabled = false; runBtn.textContent = 'Run →'; }
-      if (RibbonFieldController) RibbonFieldController.setBusy(false);
-      var execCard = document.getElementById('exec-card-' + turnId);
-      if (execCard) {
-        execCard.innerHTML = '<div style="color:var(--red); font-size:12px;">Execution error: ' + escapeHtml(err.message) + '</div>';
-      }
-    });
-  }
-
-  // Primary Run button in Workspace
-  var runBtn = document.getElementById('run-btn');
-  var queryInput = document.getElementById('query-input');
-  if (runBtn && queryInput) {
-    runBtn.addEventListener('click', function() {
-      var q = queryInput.value.trim();
-      if (q) executeQuery(q);
-    });
-    queryInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') runBtn.click();
-    });
-  }
-
-  // Overview Data Loader
-  function loadOverview() {
-    loadSystemStatus();
-    var recentCont = document.getElementById('ov-recent-investigations');
-    if (!recentCont) return;
-    fetch(API_BASE + '/api/investigations')
-      .then(function(res) { return res.json(); })
-      .then(function(list) {
-        if (!list || list.length === 0) {
-          recentCont.innerHTML = '<div style="padding:14px; color:var(--ink-dim); font-size:11.5px;">No previous investigations logged.</div>';
-          return;
-        }
-        recentCont.innerHTML = '';
-        list.slice(0, 4).forEach(function(inv) {
-          var div = document.createElement('div');
-          div.className = 'clean-item';
-          div.innerHTML =
-            '<div>' +
-              '<div class="t-primary">' + escapeHtml(inv.title) + '</div>' +
-              '<div class="t-meta">' + escapeHtml(inv.updated_at) + ' &middot; ' + escapeHtml(inv.agent) + ' &middot; ' + inv.turn_count + ' turns</div>' +
-            '</div>' +
-            '<button class="status-tag" style="cursor:pointer;" onclick="window.restoreFromOverview(\'' + inv.conversation_id + '\')">OPEN &rarr;</button>';
-          recentCont.appendChild(div);
-        });
-      })
-      .catch(function() {});
-  }
-
-  window.restoreFromOverview = function(convId) {
-    switchView('workspace');
-    restoreInvestigation(convId);
-  };
-
-  // Knowledge Documents List
-  function loadKnowledge() {
-    var knowContainer = document.getElementById('knowledge-doc-list');
-    if (!knowContainer) return;
-    fetch(API_BASE + '/api/knowledge')
-      .then(function(res) { return res.json(); })
-      .then(function(docs) {
-        knowContainer.innerHTML = '';
-        if (!docs || docs.length === 0) {
-          knowContainer.innerHTML = '<div style="padding:20px; color:var(--ink-dim); font-size:11.5px; text-align:center;">No private documents indexed yet. Upload via AI Workspace.</div>';
-          return;
-        }
-        docs.forEach(function(d) {
-          var div = document.createElement('div');
-          div.className = 'clean-item';
-          div.innerHTML =
-            '<div>' +
-              '<div class="t-primary">📄 ' + escapeHtml(d.filename) + '</div>' +
-              '<div class="t-meta">' + d.file_type + ' &middot; ' + d.page_count + ' ' + (d.file_type === 'PDF' ? 'pages' : 'sections') + ' &middot; ' + d.chunk_count + ' chunks embedded</div>' +
-            '</div>' +
-            '<span style="font-family:var(--mono); font-size:9.5px; color:var(--moss); background:var(--moss-glow); padding:2px 7px; border-radius:3px; border:1px solid var(--moss-line);">INDEXED</span>';
-          knowContainer.appendChild(div);
-        });
-      })
-      .catch(function() {
-        knowContainer.innerHTML = '<div style="padding:14px; color:var(--red); font-size:11.5px;">Failed to load knowledge documents from backend.</div>';
-      });
-  }
-
-  // Load Agents List
-  function loadAgents() {
-    var agentContainer = document.getElementById('agents-roster-list');
-    if (!agentContainer) return;
-    fetch(API_BASE + '/api/agents')
-      .then(function(res) { return res.json(); })
-      .then(function(agents) {
-        agentContainer.innerHTML = '';
-        agents.forEach(function(a) {
-          var div = document.createElement('div');
-          div.className = 'clean-item';
-          div.innerHTML =
-            '<div>' +
-              '<div class="t-primary">' + escapeHtml(a.name) + '</div>' +
-              '<div class="t-meta">' + escapeHtml(a.purpose) + ' &middot; Tools: ' + (a.tools || []).join(', ') + '</div>' +
-            '</div>' +
-            '<button class="status-tag" style="cursor:pointer;" onclick="dispatchAgent(\'' + a.id + '\')">DISPATCH &rarr;</button>';
-          agentContainer.appendChild(div);
-        });
-      })
-      .catch(function() {});
-  }
-
-  window.dispatchAgent = function(agentId) {
-    switchView('workspace');
-    var qi = document.getElementById('query-input');
-    if (qi) qi.value = 'Run diagnostic investigation with ' + agentId;
-  };
-
-  // Load Security Capabilities
-  function loadSecurity() {
-    var tbody = document.getElementById('security-table-body');
-    if (!tbody) return;
-    fetch(API_BASE + '/api/security')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (!data.permissions) return;
-        tbody.innerHTML = '';
-        Object.keys(data.permissions).forEach(function(k) {
-          var val = data.permissions[k];
-          var color = val === 'ALLOWED' ? 'var(--moss)' : 'var(--red)';
-          var tr = document.createElement('tr');
-          tr.innerHTML =
-            '<td style="text-transform:capitalize;">' + k.replace(/_/g, ' ') + '</td>' +
-            '<td style="color:' + color + '; font-family:var(--mono); font-weight:500;">' + val + '</td>' +
-            '<td style="color:var(--ink-dim); font-family:var(--mono);">' + data.boundary + '</td>';
-          tbody.appendChild(tr);
-        });
-      })
-      .catch(function() {});
-  }
-
-  // Load Audit Trail
-  function loadAudit() {
-    var tbody = document.getElementById('audit-table-body');
-    var empty = document.getElementById('audit-empty');
-    if (!tbody) return;
-    fetch(API_BASE + '/api/audit')
-      .then(function(res) { return res.json(); })
-      .then(function(entries) {
-        tbody.innerHTML = '';
-        if (!entries || entries.length === 0) {
-          if (empty) empty.style.display = 'block';
-          return;
-        }
-        if (empty) empty.style.display = 'none';
-        entries.forEach(function(entry) {
-          var tr = document.createElement('tr');
-          var hashShort = (entry.entry_hash || '').slice(0, 16) + '…';
-          tr.innerHTML =
-            '<td style="font-family:var(--mono); color:var(--ink-dim); font-size:10px;">' + escapeHtml(entry.timestamp) + '</td>' +
-            '<td>operator.l2</td>' +
-            '<td style="font-family:var(--mono); font-size:10px;">' + escapeHtml(entry.user_role) + '</td>' +
-            '<td style="color:var(--ink);">' + escapeHtml(entry.user_request) + '</td>' +
-            '<td>' + escapeHtml(entry.agent) + '</td>' +
-            '<td><span style="font-family:var(--mono); font-size:9.5px; color:var(--moss);">[' + escapeHtml(entry.status) + ']</span></td>' +
-            '<td style="font-family:var(--mono); font-size:9px; color:var(--ink-dim);" title="' + escapeHtml(entry.entry_hash) + '">' + hashShort + '</td>';
-          tbody.appendChild(tr);
-        });
-      })
-      .catch(function() {});
-  }
-
-  // Verify Audit Hash Chain
-  var verifyAuditBtn = document.getElementById('verify-audit-btn');
-  var chainBanner = document.getElementById('chain-verification-banner');
-  if (verifyAuditBtn) {
-    verifyAuditBtn.addEventListener('click', function() {
-      verifyAuditBtn.disabled = true;
-      verifyAuditBtn.textContent = 'Verifying…';
-      fetch(API_BASE + '/api/audit/verify')
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          verifyAuditBtn.disabled = false;
-          verifyAuditBtn.textContent = 'Verify Chain →';
-          if (!chainBanner) return;
-          chainBanner.style.display = 'block';
-          if (data.chain_valid) {
-            chainBanner.innerHTML =
-              '<div class="verify-badge" style="width:100%; padding:8px 12px; font-size:10px; justify-content:center;">' +
-                '✓ TAMPER-EVIDENT AUDIT CHAIN VERIFIED: ' + data.verified_entries + '/' + data.total_entries + ' cryptographic SHA-256 blocks intact' +
-              '</div>';
-          } else {
-            chainBanner.innerHTML =
-              '<div class="verify-badge" style="width:100%; padding:8px 12px; font-size:10px; justify-content:center; color:var(--red); border-color:var(--red); background:rgba(217,83,79,0.1);">' +
-                '⚠ CHAIN INTEGRITY BREAK AT BLOCK: ' + data.broken_at +
-              '</div>';
-          }
-        })
-        .catch(function(err) {
-          verifyAuditBtn.disabled = false;
-          verifyAuditBtn.textContent = 'Verify Chain →';
-          alert('Verification request failed: ' + err.message);
-        });
-    });
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  // Initial Data Bootstrap
-  loadSystemStatus();
-  loadDocumentContextSelector();
-  loadHistory();
-  loadKnowledge();
-  loadAgents();
-  loadSecurity();
-  loadAudit();
-
-  console.log('[INNERCORE] Sovereign Command Center initialized with refined calm palette and split-panel document viewer.');
 })();
 </script>
 </body>
