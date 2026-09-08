@@ -120,8 +120,8 @@
      pointer-parallax transform; putting both on one element means whichever
      is written last wins and the dock jumps out of centre. */
   .dock-wrap{
-    position:absolute; z-index:5;
-    top:calc(38 * var(--u)); left:0; right:0;
+    position:fixed; z-index:9999;
+    top:max(16px, calc(26 * var(--u))); left:0; right:0;
     display:flex; justify-content:center;
     pointer-events:none;
   }
@@ -1594,7 +1594,7 @@
         <span class="glyph" aria-hidden="true">
           <svg viewBox="0 0 16 16"><path d="M8 2.2L3.2 4.4v4.5c0 3.2 2.8 5.4 4.8 6.1 2-.7 4.8-2.9 4.8-6.1V4.4L8 2.2z"/><path d="M6.5 8l1.5 1.5 2.5-3"/></svg>
         </span>
-        <span>Sovereign</span>
+        <span>Sovereign AI</span>
       </a>
       <a class="dock-item dock-item--enter" data-dock data-spec data-burst href="command-center.html" style="--d:380ms">
         <span class="glyph" aria-hidden="true">
@@ -3255,18 +3255,59 @@ window.__seek   = v => { clock = v; drawn = null; };
       st.el.addEventListener('focusout', function () { st.focused = false; SPEC.dirty = true; });
     })(SPEC.items[i]);
 
-    /* the current section moves with the click, and the pill throws a
-       handful of pollen — the page already has an emitter for that */
+    /* the current section moves with the click, smoothly scrolls to target, and emits pollen */
     root.addEventListener('click', function (e) {
       var item = e.target.closest('[data-dock]');
       if (!item) return;
-      e.preventDefault();
+
+      var href = item.getAttribute('href');
+      if (href) {
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          var targetId = href.substring(1);
+          var targetEl = document.getElementById(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (window.history && window.history.pushState) {
+              window.history.pushState(null, null, href);
+            }
+          }
+        } else {
+          e.preventDefault();
+          window.location.href = href;
+        }
+      }
+
       if (!item.classList.contains('dock-mark')) {
         for (var i = 0; i < DOCK.items.length; i++) DOCK.items[i].el.classList.remove('is-active');
         item.classList.add('is-active');
       }
       burstAt(e.clientX, e.clientY);
     });
+
+    // Dynamic scroll-spy to highlight whichever section is currently in view
+    var dockSections = ['hero', 'problem', 'how-it-works', 'sovereign'];
+    window.addEventListener('scroll', function () {
+      var scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      var activeSec = 'hero';
+      for (var s = 0; s < dockSections.length; s++) {
+        var secEl = document.getElementById(dockSections[s]);
+        if (secEl) {
+          var top = secEl.offsetTop - 240;
+          if (scrollY >= top) {
+            activeSec = dockSections[s];
+          }
+        }
+      }
+      for (var i = 0; i < DOCK.items.length; i++) {
+        var h = DOCK.items[i].el.getAttribute('href');
+        if (h === '#' + activeSec) {
+          DOCK.items[i].el.classList.add('is-active');
+        } else if (!DOCK.items[i].el.classList.contains('dock-mark') && h && h.startsWith('#')) {
+          DOCK.items[i].el.classList.remove('is-active');
+        }
+      }
+    }, { passive: true });
   }
 
   function ready() {
