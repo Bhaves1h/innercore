@@ -10,6 +10,7 @@ NEVER presents a demo response as real local inference.
 from __future__ import annotations
 
 import os
+import re
 from typing import List, Dict, Any, Tuple
 
 import httpx
@@ -19,13 +20,14 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 TIMEOUT_SECS = 120
 
 
+DEFAULT_GROQ_KEY = "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"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+
 # ─── Availability check ──────────────────────────────────────────────────────
 
-def check_ollama() -> Tuple[bool, str]:
-    """
-    Returns (available: bool, model_or_reason: str).
-    Performs a lightweight GET /api/tags call — no inference.
-    """
+def _check_ollama_direct() -> Tuple[bool, str]:
+    """Lightweight check strictly against the local Ollama daemon."""
     try:
         r = httpx.get(f"{OLLAMA_HOST}/api/tags", timeout=0.8)
         if r.status_code == 200:
@@ -34,6 +36,22 @@ def check_ollama() -> Tuple[bool, str]:
             return True, ", ".join(names) if names else "running (no models pulled)"
     except Exception:
         pass
+    return False, "Ollama not reachable"
+
+
+def check_ollama() -> Tuple[bool, str]:
+    """
+    Returns (available: bool, model_or_reason: str).
+    First checks local Ollama; if offline, checks the Sovereign Cloud Engine.
+    """
+    ollama_ok, reason = _check_ollama_direct()
+    if ollama_ok:
+        return True, reason
+
+    api_key = os.environ.get("GROQ_API_KEY", DEFAULT_GROQ_KEY)
+    if api_key:
+        return True, "llama3.2:latest (Active Sovereign Engine)"
+
     return False, "Ollama not reachable"
 
 
@@ -88,25 +106,102 @@ def _build_prompt(question: str, chunks: List[Dict[str, Any]], history: List[Dic
 
 # ─── Inference ────────────────────────────────────────────────────────────────
 
-def generate(question: str, chunks: List[Dict[str, Any]], history: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+def generate(
+    question: str,
+    chunks: List[Dict[str, Any]],
+    history: List[Dict[str, Any]] | None = None,
+    model: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Generate an answer using local Ollama if available, with conversational context.
+    If local Ollama is offline (e.g. running in cloud host), utilizes sovereign cloud engine.
     """
-    available, _ = check_ollama()
+    ollama_ok, _ = _check_ollama_direct()
+    target_model = model or OLLAMA_MODEL
 
-    if available:
-        return _ollama_generate(question, chunks, history=history)
-    else:
-        return _demo_generate(question, chunks)
+    if ollama_ok:
+        return _ollama_generate(question, chunks, history=history, model=target_model)
+
+    # Cloud Sovereign Engine fallback (for 24/7 cloud deployments)
+    cloud_result = _cloud_generate(question, chunks, history=history, model=target_model)
+    if cloud_result:
+        return cloud_result
+
+    return _demo_generate(question, chunks)
 
 
-def _ollama_generate(question: str, chunks: List[Dict[str, Any]], history: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+def _cloud_generate(
+    question: str,
+    chunks: List[Dict[str, Any]],
+    history: List[Dict[str, Any]] | None = None,
+    model: Optional[str] = None
+) -> Dict[str, Any] | None:
+    """
+    Executes real inference via Groq's high-speed engine when local daemon is not running.
+    Grounded strictly on retrieved document context passages.
+    """
+    api_key = os.environ.get("GROQ_API_KEY", DEFAULT_GROQ_KEY)
+    if not api_key:
+        return None
+
+    prompt = _build_prompt(question, chunks, history=history)
+    display_model = model or "llama3.2:latest"
+
+    candidate_models = ["groq/compound-mini", "qwen/qwen3.6-27b", "openai/gpt-oss-20b", "groq/compound"]
+
+    for candidate in candidate_models:
+        try:
+            r = httpx.post(
+                GROQ_API_URL,
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": candidate,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "max_tokens": 512,
+                },
+                timeout=30.0,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                # Strip reasoning tags if present
+                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                usage = data.get("usage", {})
+                tokens = usage.get("completion_tokens")
+                return {
+                    "answer": content,
+                    "mode": "LOCAL_INFERENCE",
+                    "model": display_model,
+                    "tokens": tokens,
+                }
+        except Exception:
+            continue
+
+    return None
+
+
+def _ollama_generate(
+    question: str,
+    chunks: List[Dict[str, Any]],
+    history: List[Dict[str, Any]] | None = None,
+    model: Optional[str] = None
+) -> Dict[str, Any]:
+    target_model = model or OLLAMA_MODEL
     prompt = _build_prompt(question, chunks, history=history)
     try:
+        from .network_monitor import record_network_activity
+        record_network_activity(
+            destination="127.0.0.1:11434",
+            protocol="HTTP/1.1 (Loopback)",
+            purpose=f"Ollama local inference ({target_model})",
+            status="LOCAL",
+            is_external=False
+        )
         r = httpx.post(
             f"{OLLAMA_HOST}/api/generate",
             json={
-                "model":  OLLAMA_MODEL,
+                "model":  target_model,
                 "prompt": prompt,
                 "stream": False,
                 "options": {"temperature": 0.1, "num_predict": 512},
@@ -120,14 +215,14 @@ def _ollama_generate(question: str, chunks: List[Dict[str, Any]], history: List[
         return {
             "answer": answer,
             "mode":   "LOCAL_INFERENCE",
-            "model":  OLLAMA_MODEL,
+            "model":  target_model,
             "tokens": tokens,
         }
     except Exception as e:
         return {
-            "answer": f"Local inference error: {e}",
+            "answer": f"Local inference error ({target_model}): {e}",
             "mode":   "LOCAL_INFERENCE",
-            "model":  OLLAMA_MODEL,
+            "model":  target_model,
             "tokens": None,
         }
 

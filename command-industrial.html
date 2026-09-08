@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>INNERCORE // Industrial Workstation</title>
+  <link rel="stylesheet" href="command-industrial.css">
+</head>
+<body>
+
+  <!-- Fixed Top Workstation Status Strip -->
+  <header class="industrial-top-strip">
+    <div class="strip-left-lockup">
+      <span class="strip-system-name">INNERCORE</span>
+      <span class="strip-build-id">WORKSTATION // v2.4</span>
+    </div>
+
+    <!-- Center Navigation Tabs -->
+    <nav class="strip-center-nav" aria-label="Workstation View Navigation">
+      <button class="strip-nav-item active" data-view="workspace">WORKSPACE</button>
+      <button class="strip-nav-item" data-view="knowledge">KNOWLEDGE</button>
+      <button class="strip-nav-item" data-view="history">HISTORY</button>
+      <button class="strip-nav-item" data-view="security">SECURITY</button>
+    </nav>
+
+    <!-- Right Telemetry & Alternative Interface Switcher -->
+    <div class="strip-right-telemetry">
+      <div class="telemetry-chip">
+        <span class="status-dot-led green"></span>
+        <span>LOCAL ENCLAVE</span>
+      </div>
+      <div class="telemetry-chip">MODEL: <strong>llama3.2</strong></div>
+      <div class="telemetry-chip">EGRESS: <strong>0 BLOCKED</strong></div>
+      <div class="telemetry-chip">OPERATOR: <strong>L2</strong></div>
+      <a href="command-center.html" class="link-alt-center" title="Switch to sovereign full-width workspace">
+        Full Workspace &rarr;
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Workstation Stage -->
+  <main class="industrial-workspace-stage">
+    <div class="industrial-workstation-card" id="workstation-main-card">
+
+      <!-- Workstation Top Control Bar (Command Input Bar) -->
+      <div class="workstation-input-strip">
+        <span class="input-prompt-label">INVESTIGATION &gt;</span>
+        <input
+          type="text"
+          id="ind-query-input"
+          class="industrial-input"
+          placeholder="Search private organizational knowledge or ask an operational question..."
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+        />
+
+        <div class="agent-selector-box" title="Select active operational agent">
+          <span>AGENT:</span>
+          <select id="ind-agent-select">
+            <option value="agent-maintenance">Maintenance</option>
+            <option value="agent-knowledge">Knowledge</option>
+            <option value="agent-security">Safety Officer</option>
+          </select>
+        </div>
+
+        <button class="btn-execute-industrial" id="ind-run-btn">[ RUN ]</button>
+      </div>
+
+      <!-- System Metadata Telemetry Bar -->
+      <div class="workstation-meta-bar">
+        <div class="meta-item-tag">
+          <span>NODE:</span>
+          <span class="val">ON-PREMISE AIR-GAPPED</span>
+        </div>
+        <div class="meta-item-tag">
+          <span>VECTOR_STORE:</span>
+          <span class="val">CHROMADB PERSISTENT</span>
+        </div>
+        <div class="meta-item-tag">
+          <span>CLEARANCE:</span>
+          <span class="val">OPERATOR_LEVEL_2</span>
+        </div>
+        <div class="meta-item-tag">
+          <span>CRYPTO_LEDGER:</span>
+          <span class="val">SHA-256 AUDIT COMMITTED</span>
+        </div>
+      </div>
+
+      <!-- Workstation Content Body (Initial / Executing / Result / Secondary Views) -->
+      <div class="workstation-body" id="workstation-content-body"></div>
+
+      <!-- Workstation Footer Controls -->
+      <footer class="workstation-footer">
+        <div class="footer-shortcuts">
+          <span>[ ↵ SUBMIT ]</span>
+          <span>[ ESC RESET ]</span>
+          <span>[ TAB CYCLE AGENT ]</span>
+        </div>
+        <div>INNERCORE INDUSTRIAL CONTROL WORKSTATION // ENCLAVE OPERATING ENVIRONMENT</div>
+      </footer>
+
+    </div>
+  </main>
+
+  <!-- Slide-over Exact PDF Citation Drawer -->
+  <aside class="industrial-doc-drawer" id="ind-doc-drawer" aria-label="Document Viewer">
+    <div class="ind-drawer-header">
+      <span class="ind-drawer-title" id="ind-drawer-title">Document.pdf</span>
+      <button class="ind-drawer-close" id="ind-drawer-close" title="Close document drawer">&times;</button>
+    </div>
+    <div class="ind-drawer-citation-bar">
+      <span id="ind-drawer-citation">PAGE 1 &bull; RELEVANCE 95%</span>
+      <span>ON-PREMISE ENCLAVE</span>
+    </div>
+    <iframe class="ind-drawer-iframe" id="ind-drawer-iframe" title="PDF Document Page Viewer"></iframe>
+  </aside>
+
+  <script src="command-industrial.js"></script>
+</body>
+</html>

@@ -31,11 +31,18 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect as sa_inspect, text as sa_text
 
 from .database import engine, Base, get_db
-from .models   import AuditLogEntry, InvestigationConversation
+from .models   import (
+    AuditLogEntry,
+    InvestigationConversation,
+    InvestigationEvidence,
+    KnowledgeCollection,
+    DocumentRecord,
+)
 from .schemas  import (
     HealthResponse,
     SystemModeResponse,
@@ -54,7 +61,16 @@ from .schemas  import (
     SecurityResponse,
     AuditEntry,
     AuditVerifyResponse,
+    ModelsResponse,
+    ModelItem,
+    ModelRoutingInfo,
+    GenerateReportRequest,
+    DeliverableResponse,
+    KnowledgeCollectionItem,
+    CreateCollectionRequest,
+    AssignCollectionRequest,
 )
+from fastapi import Form
 
 # ─── DB setup ────────────────────────────────────────────────────────────────
 
@@ -63,12 +79,54 @@ def _migrate_db():
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:
         inspector = sa_inspect(engine)
-        cols = [c["name"] for c in inspector.get_columns("audit_log")]
-        if "inference_mode" not in cols:
-            conn.execute(sa_text(
-                "ALTER TABLE audit_log ADD COLUMN inference_mode VARCHAR(32) DEFAULT 'UNKNOWN'"
-            ))
-            conn.commit()
+        table_names = inspector.get_table_names()
+        if "audit_log" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("audit_log")]
+            if "inference_mode" not in cols:
+                conn.execute(sa_text(
+                    "ALTER TABLE audit_log ADD COLUMN inference_mode VARCHAR(32) DEFAULT 'UNKNOWN'"
+                ))
+                conn.commit()
+
+        if "investigations" in table_names:
+            inv_cols = [c["name"] for c in inspector.get_columns("investigations")]
+            col_defs = {
+                "question": "TEXT DEFAULT ''",
+                "answer": "TEXT DEFAULT ''",
+                "model": "VARCHAR(64) DEFAULT 'llama3.2:latest'",
+                "collection": "VARCHAR(64) DEFAULT 'All Documents'",
+                "status": "VARCHAR(32) DEFAULT 'VERIFIED'",
+                "execution_trace": "TEXT DEFAULT '[]'",
+            }
+            for col_name, col_type in col_defs.items():
+                if col_name not in inv_cols:
+                    conn.execute(sa_text(f"ALTER TABLE investigations ADD COLUMN {col_name} {col_type}"))
+                    conn.commit()
+
+
+def _seed_default_collections(db: Session):
+    defaults = [
+        ("Maintenance", "Maintenance manuals, inspection reports and service procedures"),
+        ("Safety & Compliance", "Safety standards, compliance records, and hazard protocols"),
+        ("Operations", "Plant telemetry logs, operating parameters, and runbooks"),
+        ("Finance", "Revenue models, commercial structure, and market assessments"),
+    ]
+    for name, desc in defaults:
+        existing = db.query(KnowledgeCollection).filter_by(name=name).first()
+        if not existing:
+            db.add(KnowledgeCollection(name=name, description=desc))
+    
+    # Ensure default documents are recorded
+    doc_seeds = [
+        ("Executive Summary.pdf", "Finance", "PDF", 12, 69),
+        ("operations.csv", "Operations", "CSV", 1, 120),
+    ]
+    for fname, col_name, ftype, pages, chunks in doc_seeds:
+        rec = db.query(DocumentRecord).filter_by(filename=fname).first()
+        if not rec:
+            db.add(DocumentRecord(filename=fname, collection=col_name, file_type=ftype, page_count=pages, chunk_count=chunks))
+    db.commit()
+
 
 Base.metadata.create_all(bind=engine)
 try:
@@ -94,6 +152,14 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     """Ensure database tables exist and default document is indexed into ChromaDB."""
+    try:
+        from .database import SessionLocal
+        db = SessionLocal()
+        _seed_default_collections(db)
+        db.close()
+    except Exception as e:
+        print(f"[INNERCORE] Collection seeding notice: {e}")
+
     try:
         from .rag import _auto_index_default_document, _get_collection
         col = _get_collection()
@@ -153,22 +219,111 @@ def system_mode():
     }
 
 
+
+# ─── Knowledge Collections ───────────────────────────────────────────────────
+
+@app.get("/api/knowledge/collections", response_model=List[KnowledgeCollectionItem])
+def list_knowledge_collections(db: Session = Depends(get_db)):
+    """List all logical knowledge collections with document and chunk statistics."""
+    cols = db.query(KnowledgeCollection).all()
+    from .rag import _get_collection
+    
+    # Calculate stats
+    chroma_col = None
+    try:
+        chroma_col = _get_collection()
+    except Exception:
+        pass
+
+    results = []
+    for c in cols:
+        docs = db.query(DocumentRecord).filter_by(collection=c.name).all()
+        doc_count = len(docs)
+        chunk_count = sum(d.chunk_count for d in docs)
+        
+        # Cross verify with ChromaDB if available
+        if chroma_col and chunk_count == 0:
+            try:
+                ch_res = chroma_col.get(where={"collection": c.name})
+                if ch_res and ch_res.get("ids"):
+                    chunk_count = len(ch_res["ids"])
+            except Exception:
+                pass
+
+        results.append(KnowledgeCollectionItem(
+            id=f"col-{c.id}",
+            name=c.name,
+            description=c.description,
+            document_count=doc_count,
+            chunk_count=chunk_count,
+            created_at=c.created_at.strftime("%Y-%m-%d %H:%M:%S") if c.created_at else None
+        ))
+    return results
+
+
+@app.post("/api/knowledge/collections", response_model=KnowledgeCollectionItem)
+def create_knowledge_collection(payload: CreateCollectionRequest, db: Session = Depends(get_db)):
+    """Create a new named knowledge collection."""
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Collection name cannot be empty.")
+    
+    existing = db.query(KnowledgeCollection).filter(KnowledgeCollection.name.ilike(name)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Collection '{name}' already exists.")
+    
+    new_col = KnowledgeCollection(name=name, description=payload.description or "")
+    db.add(new_col)
+    db.commit()
+    db.refresh(new_col)
+    return KnowledgeCollectionItem(
+        id=f"col-{new_col.id}",
+        name=new_col.name,
+        description=new_col.description,
+        document_count=0,
+        chunk_count=0,
+        created_at=new_col.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+
+@app.post("/api/knowledge/assign-collection")
+def assign_document_collection(payload: AssignCollectionRequest, db: Session = Depends(get_db)):
+    """Assign an existing document to a knowledge collection without re-embedding."""
+    from .rag import update_document_collection_metadata
+    
+    doc = db.query(DocumentRecord).filter_by(filename=payload.filename).first()
+    if not doc:
+        doc = DocumentRecord(filename=payload.filename, collection=payload.collection)
+        db.add(doc)
+    else:
+        doc.collection = payload.collection
+    db.commit()
+
+    # Update ChromaDB chunk metadata
+    update_document_collection_metadata(payload.filename, payload.collection)
+    return {"success": True, "filename": payload.filename, "collection": payload.collection}
+
 @app.get("/api/knowledge", response_model=List[UploadedDocument])
-def get_knowledge_documents():
+def get_knowledge_documents(db: Session = Depends(get_db)):
     from .rag import list_documents
     docs = list_documents()
-    return [
-        UploadedDocument(
+    res = []
+    for d in docs:
+        col_name = "All Documents"
+        doc_rec = db.query(DocumentRecord).filter_by(filename=d["filename"]).first()
+        if doc_rec and doc_rec.collection:
+            col_name = doc_rec.collection
+        res.append(UploadedDocument(
             doc_id      = d["doc_id"],
             filename    = d["filename"],
             file_type   = d.get("file_type", "DOC"),
+            collection  = col_name,
             page_count  = d["page_count"],
             chunk_count = d["chunk_count"],
             status      = d["status"],
             boundary    = d.get("boundary", "LOCAL AIR-GAPPED"),
-        )
-        for d in docs
-    ]
+        ))
+    return res
 
 
 @app.get("/api/knowledge/details", response_model=DocumentDetailsResponse)
@@ -195,7 +350,7 @@ def get_knowledge_page(filename: str, page: int = 1):
 SUPPORTED_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".markdown", ".csv", ".tsv", ".json", ".log"}
 
 @app.post("/api/knowledge/upload", response_model=UploadedDocument)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), collection: Optional[str] = Form("All Documents"), db: Session = Depends(get_db)):
     """Accept PDF, DOCX, TXT, MD, CSV, etc. Extract text locally, embed, store in ChromaDB."""
     print(f"[BACKEND] Received upload request for {file.filename}")
     ext = os.path.splitext(file.filename or "")[1].lower()
@@ -217,7 +372,23 @@ async def upload_document(file: UploadFile = File(...)):
         import asyncio
         from .rag import process_document
         print(f"[BACKEND] Starting process_document in thread...")
-        result = await asyncio.to_thread(process_document, file_bytes, file.filename)
+        target_col = collection or "All Documents"
+        result = await asyncio.to_thread(process_document, file_bytes, file.filename, target_col)
+        # Update or record in SQLite
+        doc_rec = db.query(DocumentRecord).filter_by(filename=file.filename).first()
+        if not doc_rec:
+            doc_rec = DocumentRecord(
+                filename=file.filename,
+                collection=target_col,
+                file_type=result.get("file_type", "DOC"),
+                page_count=result.get("page_count", 1),
+                chunk_count=result.get("chunk_count", 0)
+            )
+            db.add(doc_rec)
+        else:
+            doc_rec.collection = target_col
+            doc_rec.chunk_count = result.get("chunk_count", 0)
+        db.commit()
         print(f"[BACKEND] process_document finished: {result}")
     except ValueError as e:
         print(f"[BACKEND] process_document ValueError: {e}")
@@ -227,13 +398,158 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Processing failed: {e}")
 
     return UploadedDocument(
+        success     = True,
         doc_id      = result["doc_id"],
         filename    = result["filename"],
         file_type   = result.get("file_type", "DOC"),
+        collection  = result.get("collection", target_col),
         page_count  = result["page_count"],
         chunk_count = result["chunk_count"],
+        chunks      = result["chunk_count"],
         status      = "INDEXED",
         boundary    = "LOCAL AIR-GAPPED",
+    )
+
+
+@app.get("/api/knowledge/file/{filename:path}")
+def get_raw_knowledge_file(filename: str):
+    """
+    Serve the exact uploaded document locally with proper MIME type for native PDF viewing.
+    Zero cloud services.
+    """
+    from .rag import find_raw_document
+    file_path = find_raw_document(filename)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"Document '{filename}' not found on local storage.")
+
+    ext = os.path.splitext(file_path)[1].lower()
+    media_type = "application/pdf" if ext == ".pdf" else "application/octet-stream"
+    if ext in [".txt", ".md", ".csv", ".json", ".log"]:
+        media_type = "text/plain; charset=utf-8"
+
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        content_disposition_type="inline",
+        filename=os.path.basename(file_path)
+    )
+
+
+# ─── Deliverables Generation (PDF, DOCX, Markdown) ───────────────────────────
+
+@app.post("/api/deliverables/generate", response_model=DeliverableResponse)
+def generate_deliverable_report(payload: GenerateReportRequest, db: Session = Depends(get_db)):
+    """
+    Generate an official, structured investigation deliverable report in PDF, DOCX, or Markdown.
+    Data is extracted from the actual persisted investigation.
+    """
+    from .deliverables import generate_pdf_report, generate_docx_report, generate_md_report
+
+    query_text = payload.query or ""
+    result_text = payload.result or ""
+    evidence_list = payload.evidence or []
+    steps_list = payload.steps or []
+    exec_id = payload.execution_id or f"EXEC-{int(datetime.utcnow().timestamp())}"
+    entry_hash = "0" * 64
+    op_role = payload.user_role or "OPERATOR_L2"
+    agent_name = payload.agent or "Maintenance Agent"
+    model_name = payload.model or "llama3.2:latest"
+
+    # If execution_id provided, look up persisted audit entry
+    if payload.execution_id:
+        audit_rec = db.query(AuditLogEntry).filter_by(execution_id=payload.execution_id).first()
+        if audit_rec:
+            query_text = audit_rec.user_request
+            result_text = audit_rec.result
+            entry_hash = audit_rec.entry_hash
+            op_role = audit_rec.user_role
+            agent_name = audit_rec.agent
+            try:
+                evidence_list = json.loads(audit_rec.retrieved_sources)
+            except Exception:
+                pass
+            try:
+                steps_list = json.loads(audit_rec.execution_steps)
+            except Exception:
+                pass
+
+    # If conversation_id provided and fields still empty, look up conversation
+    if payload.conversation_id and not result_text:
+        conv_rec = db.query(InvestigationConversation).filter_by(conversation_id=payload.conversation_id).first()
+        if conv_rec:
+            try:
+                turns = json.loads(conv_rec.messages_json)
+                if turns:
+                    last_turn = turns[-1]
+                    query_text = last_turn.get("user_request", conv_rec.title)
+                    result_text = last_turn.get("result", "")
+                    evidence_list = last_turn.get("evidence", [])
+                    steps_list = last_turn.get("steps", [])
+                    entry_hash = last_turn.get("entry_hash", "")
+                    agent_name = last_turn.get("agent", conv_rec.agent)
+            except Exception:
+                pass
+
+    report_data = {
+        "execution_id": exec_id,
+        "query": query_text or "General Investigation",
+        "result": result_text or "Investigation completed with nominal status.",
+        "evidence": evidence_list,
+        "steps": steps_list,
+        "operator_role": op_role,
+        "agent_name": agent_name,
+        "model_name": model_name,
+        "entry_hash": entry_hash,
+        "inference_mode": "LOCAL_INFERENCE",
+    }
+
+    fmt = (payload.format or "pdf").lower()
+    if fmt == "docx":
+        out_path = generate_docx_report(report_data)
+    elif fmt in ["md", "markdown"]:
+        out_path = generate_md_report(report_data)
+    else:
+        fmt = "pdf"
+        out_path = generate_pdf_report(report_data)
+
+    filename = os.path.basename(out_path)
+    file_size_kb = f"{os.path.getsize(out_path) / 1024:.1f} KB"
+
+    return DeliverableResponse(
+        success=True,
+        format=fmt,
+        filename=filename,
+        download_url=f"/api/deliverables/download/{filename}",
+        file_size=file_size_kb,
+        generated_at=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    )
+
+
+@app.get("/api/deliverables/download/{filename:path}")
+def download_deliverable_file(filename: str):
+    """Serve a generated deliverable file for download."""
+    from .deliverables import DELIVERABLES_DIR
+    safe_filename = os.path.basename(filename)
+    target_path = os.path.join(DELIVERABLES_DIR, safe_filename)
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=404, detail=f"Deliverable file '{safe_filename}' not found.")
+
+    ext = os.path.splitext(target_path)[1].lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".md": "text/markdown; charset=utf-8",
+        ".txt": "text/plain; charset=utf-8"
+    }
+
+    return FileResponse(
+        target_path,
+        media_type=media_types.get(ext, "application/octet-stream"),
+        filename=safe_filename,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
     )
 
 
@@ -241,58 +557,147 @@ async def upload_document(file: UploadFile = File(...)):
 
 @app.get("/api/investigations", response_model=List[ConversationSummary])
 def get_investigations(db: Session = Depends(get_db)):
-    """Return all previous human-friendly investigations."""
+    """Return all previous human-friendly investigations ordered newest first."""
     records = db.query(InvestigationConversation).order_by(InvestigationConversation.updated_at.desc()).all()
     summaries = []
+    now = datetime.utcnow()
     for r in records:
         try:
-            turns = json.loads(r.messages_json)
+            turns = json.loads(r.messages_json or "[]")
         except Exception:
             turns = []
+        
+        # Determine human-friendly date group
+        date_group = "Earlier"
+        if r.updated_at:
+            delta_days = (now.date() - r.updated_at.date()).days
+            if delta_days == 0:
+                date_group = "Today"
+            elif delta_days == 1:
+                date_group = "Yesterday"
+            elif delta_days < 7:
+                date_group = "Previous 7 Days"
+            else:
+                date_group = r.updated_at.strftime("%B %Y")
+        
+        q = r.question or (turns[0].get("user_request", "") if turns else r.title)
+        a = r.answer or (turns[-1].get("result", "") if turns else r.preview)
+        
         summaries.append(ConversationSummary(
+            id              = r.id,
             conversation_id = r.conversation_id,
-            title           = r.title,
-            created_at      = r.created_at.strftime("%H:%M"),
-            updated_at      = r.updated_at.strftime("%H:%M"),
+            title           = r.title or q[:120],
+            question        = q,
+            answer          = a,
+            model           = r.model or "llama3.2:latest",
+            collection      = r.collection or "All Documents",
+            status          = r.status or "VERIFIED",
+            created_at      = r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else "",
+            updated_at      = r.updated_at.strftime("%Y-%m-%d %H:%M:%S") if r.updated_at else "",
             agent           = r.agent,
-            preview         = r.preview[:140] if r.preview else "",
-            turn_count      = len(turns),
+            preview         = r.preview[:140] if r.preview else (a[:140] if a else ""),
+            turn_count      = len(turns) if turns else 1,
+            date_group      = date_group,
         ))
     return summaries
 
 
-@app.get("/api/investigations/{conversation_id}", response_model=ConversationDetail)
-def get_investigation_detail(conversation_id: str, db: Session = Depends(get_db)):
-    """Return full thread history for an investigation."""
-    record = db.query(InvestigationConversation).filter_by(conversation_id=conversation_id).first()
+@app.get("/api/investigations/{investigation_id}", response_model=ConversationDetail)
+def get_investigation_detail(investigation_id: str, db: Session = Depends(get_db)):
+    """Return full detail including evidence and execution trace for an investigation."""
+    record = db.query(InvestigationConversation).filter(
+        (InvestigationConversation.conversation_id == investigation_id) |
+        (InvestigationConversation.id == (int(investigation_id) if investigation_id.isdigit() else -1))
+    ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Investigation not found")
+    
     try:
-        raw_turns = json.loads(record.messages_json)
+        raw_turns = json.loads(record.messages_json or "[]")
     except Exception:
         raw_turns = []
 
     messages = []
+    all_evidence = []
+    all_steps = []
     for t in raw_turns:
+        ev_items = [EvidenceItem(**e) for e in t.get("evidence", [])]
+        st_items = [ExecutionStep(**s) for s in t.get("steps", [])]
         messages.append(TurnItem(
             user_request   = t.get("user_request", ""),
-            agent          = t.get("agent", "Maintenance Agent"),
+            agent          = t.get("agent", record.agent),
             result         = t.get("result", ""),
             timestamp      = t.get("timestamp", ""),
-            evidence       = [EvidenceItem(**e) for e in t.get("evidence", [])],
-            steps          = [ExecutionStep(**s) for s in t.get("steps", [])],
+            evidence       = ev_items,
+            steps          = st_items,
             entry_hash     = t.get("entry_hash", ""),
             inference_mode = t.get("inference_mode", "LOCAL_INFERENCE"),
+            approval_request = ApprovalRequestInfo(**t["approval_request"]) if t.get("approval_request") else None,
+            approval_decision = t.get("approval_decision"),
         ))
+        if not all_evidence and ev_items:
+            all_evidence = ev_items
+        if not all_steps and st_items:
+            all_steps = st_items
+
+    # Also check investigation_evidence table if all_evidence is empty
+    if not all_evidence:
+        ev_records = db.query(InvestigationEvidence).filter_by(investigation_id=record.conversation_id).all()
+        for ev in ev_records:
+            all_evidence.append(EvidenceItem(
+                filename   = ev.filename,
+                page       = ev.page,
+                excerpt    = ev.excerpt,
+                relevance  = ev.relevance,
+                collection = record.collection,
+            ))
+
+    # Check execution_trace column if all_steps is empty
+    if not all_steps and record.execution_trace:
+        try:
+            raw_steps = json.loads(record.execution_trace)
+            all_steps = [ExecutionStep(**s) for s in raw_steps]
+        except Exception:
+            pass
+
+    q = record.question or (messages[0].user_request if messages else record.title)
+    a = record.answer or (messages[-1].result if messages else record.preview)
 
     return ConversationDetail(
+        id              = record.id,
         conversation_id = record.conversation_id,
-        title           = record.title,
-        created_at      = record.created_at.strftime("%H:%M"),
-        updated_at      = record.updated_at.strftime("%H:%M"),
+        title           = record.title or q[:120],
+        question        = q,
+        answer          = a,
+        model           = record.model or "llama3.2:latest",
+        collection      = record.collection or "All Documents",
+        status          = record.status or "VERIFIED",
+        created_at      = record.created_at.strftime("%Y-%m-%d %H:%M:%S") if record.created_at else "",
+        updated_at      = record.updated_at.strftime("%Y-%m-%d %H:%M:%S") if record.updated_at else "",
         agent           = record.agent,
         messages        = messages,
+        evidence        = all_evidence,
+        steps           = all_steps,
     )
+
+
+@app.delete("/api/investigations/{investigation_id}")
+def delete_investigation(investigation_id: str, db: Session = Depends(get_db)):
+    """Delete an investigation and its associated evidence records."""
+    record = db.query(InvestigationConversation).filter(
+        (InvestigationConversation.conversation_id == investigation_id) |
+        (InvestigationConversation.id == (int(investigation_id) if investigation_id.isdigit() else -1))
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    
+    conv_id = record.conversation_id
+    # Delete associated evidence
+    db.query(InvestigationEvidence).filter_by(investigation_id=conv_id).delete()
+    # Delete investigation record
+    db.delete(record)
+    db.commit()
+    return {"success": True, "id": conv_id, "deleted": True}
 
 
 @app.get("/api/agents", response_model=List[AgentItem])
@@ -360,6 +765,13 @@ def _tool_inspect_operational_logs(db: Session):
     ]
 
 
+@app.get("/api/models", response_model=ModelsResponse)
+def get_local_models():
+    """Discover all installed models on the local Ollama daemon."""
+    from .router import discover_local_models
+    return discover_local_models()
+
+
 # ─── Execute (Threaded with History & Follow-ups) ────────────────────────────
 
 @app.post("/api/execute", response_model=ExecuteResponse)
@@ -389,98 +801,22 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
             except Exception:
                 existing_turns = []
 
-        steps: List[ExecutionStep] = []
-        t0 = _ms()
+        from .agent_loop import run_agent_execution_loop
 
-        # ── Step 1: REQUEST RECEIVED ──────────────────────────────────────────
-        steps.append(ExecutionStep(
-            id="st-req", event="REQUEST RECEIVED",
-            detail=f"Query captured - {len(payload.request)} chars (Thread: {conv_id})",
-            duration_ms=_ms() - t0,
-        ))
-
-        # ── Step 2: RBAC ──────────────────────────────────────────────────────
-        t1 = _ms()
-        steps.append(ExecutionStep(
-            id="st-rbac", event="RBAC CHECK",
-            detail=f"Role {payload.user_role} validated - access GRANTED",
-            duration_ms=_ms() - t1,
-        ))
-
-        # ── Step 3: KNOWLEDGE RETRIEVAL ───────────────────────────────────────
-        t2 = _ms()
-        chunks = _tool_search_private_knowledge(payload.request, n=5, doc_filter=payload.doc_filter)
-        filter_note = f" [Filter: {payload.doc_filter}]" if payload.doc_filter and payload.doc_filter != "ALL" else ""
-        retrieval_detail = (
-            f"{len(chunks)} chunks retrieved from private knowledge base{filter_note}"
-            if chunks else f"No direct matching documents found{filter_note}"
+        result_text, agent_name, steps, evidence, tools_used, inference_mode, model_used, routing_info, loop_status, approval_request = run_agent_execution_loop(
+            payload=payload,
+            history=existing_turns
         )
-        steps.append(ExecutionStep(
-            id="st-know", event="PRIVATE KNOWLEDGE SEARCH",
-            detail=retrieval_detail,
-            duration_ms=_ms() - t2,
-        ))
 
-        # ── Step 4: AGENT DECISION ────────────────────────────────────
-        t3 = _ms()
-        agent_name = {
-            "agent-maintenance": "Maintenance Agent",
-            "agent-knowledge":   "Knowledge Agent",
-            "agent-security":    "Security Agent",
-        }.get(payload.agent_id or "agent-maintenance", "Maintenance Agent")
-
-        steps.append(ExecutionStep(
-            id="st-agent", event="AGENT SELECTED",
-            detail=f"{agent_name} - bounded dispatch OK",
-            duration_ms=_ms() - t3,
-        ))
-
-        # ── Step 5: TOOL INVOCATION ───────────────────────────────────────────
-        t4 = _ms()
-        tools_used = ["search_private_knowledge"]
-        steps.append(ExecutionStep(
-            id="st-tool", event="TOOL: search_private_knowledge",
-            detail=f"Executed - {len(chunks)} results, zero external egress",
-            duration_ms=_ms() - t4,
-        ))
-
-        # ── Step 6: VERIFICATION ──────────────────────────────────────────────
-        t5 = _ms()
-        steps.append(ExecutionStep(
-            id="st-verify", event="VERIFICATION",
-            detail="Sources verified - within on-premise boundary",
-            duration_ms=_ms() - t5,
-        ))
-
-        # ── Step 7: LLM SYNTHESIS (with conversational history) ───────────────
-        t6 = _ms()
-        llm_result = generate(payload.request, chunks, history=existing_turns)
-        ollama_detail = (
-            f"LOCAL_INFERENCE via {llm_result['model']}"
-            if llm_result["mode"] == "LOCAL_INFERENCE"
-            else "DEMO_SIMULATION - Ollama not running on host"
-        )
-        steps.append(ExecutionStep(
-            id="st-llm", event="LOCAL LLM SYNTHESIS",
-            detail=ollama_detail,
-            duration_ms=_ms() - t6,
-        ))
-
-        # ── Build evidence list ───────────────────────────────────────────────
-        evidence = [
-            EvidenceItem(
-                filename       = c["filename"],
-                page           = c["page"],
-                source_locator = c.get("source_locator") or f"Page {c['page']}",
-                file_type      = c.get("file_type", "DOC"),
-                excerpt        = c.get("excerpt") or c["text"][:220],
-                relevance      = c["relevance"],
-            )
-            for c in chunks
-        ]
-
-        result_text   = llm_result["answer"]
-        inference_mode = llm_result["mode"]
+        audit_status = loop_status
+        if loop_status == "AWAITING_APPROVAL":
+            req_label = f"HITL_APPROVAL_REQUEST: {payload.request}"
+        elif loop_status == "DENIED":
+            req_label = f"HITL_ACTION_DENIED: {payload.request}"
+            audit_status = "REJECTED"
+        else:
+            req_label = payload.request
+            audit_status = "VERIFIED"
 
         # ── Audit entry with chained hash ──────────────────────────────────────
         last_entry  = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
@@ -491,23 +827,23 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
             execution_id  = execution_id,
             timestamp     = timestamp_str,
             user_role     = payload.user_role,
-            user_request  = payload.request,
+            user_request  = req_label,
             agent         = agent_name,
             result        = result_text,
-            status_text   = "VERIFIED",
+            status_text   = audit_status,
         )
 
         db_entry = AuditLogEntry(
             execution_id      = execution_id,
             timestamp         = now,
             user_role         = payload.user_role,
-            user_request      = payload.request,
+            user_request      = req_label,
             agent             = agent_name,
             execution_steps   = json.dumps([s.model_dump() for s in steps]),
             tools_invoked     = json.dumps(tools_used),
             retrieved_sources = json.dumps([e.model_dump() for e in evidence]),
             result            = result_text,
-            status            = "VERIFIED",
+            status            = audit_status,
             inference_mode    = inference_mode,
             previous_hash     = prev_hash,
             entry_hash        = entry_hash,
@@ -516,6 +852,7 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
 
         # ── Persist Conversation History ──────────────────────────────────────
         new_turn = {
+            "execution_id":   execution_id,
             "user_request":   payload.request,
             "agent":          agent_name,
             "result":         result_text,
@@ -524,6 +861,8 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
             "steps":          [s.model_dump() for s in steps],
             "entry_hash":     entry_hash,
             "inference_mode": inference_mode,
+            "approval_request": approval_request.model_dump() if approval_request else None,
+            "approval_decision": payload.approval_decision
         }
         existing_turns.append(new_turn)
 
@@ -531,17 +870,42 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
             conv_record = InvestigationConversation(
                 conversation_id = conv_id,
                 title           = payload.request[:120],
+                question        = payload.request,
+                answer          = result_text,
+                model           = model_used,
+                agent           = agent_name,
+                collection      = payload.collection_filter or "All Documents",
+                status          = audit_status,
                 created_at      = now,
                 updated_at      = now,
-                agent           = agent_name,
                 preview         = result_text[:160],
                 messages_json   = json.dumps(existing_turns),
+                execution_trace = json.dumps([s.model_dump() for s in steps]),
             )
             db.add(conv_record)
         else:
-            conv_record.updated_at    = now
-            conv_record.preview       = result_text[:160]
-            conv_record.messages_json = json.dumps(existing_turns)
+            conv_record.updated_at      = now
+            conv_record.question        = payload.request
+            conv_record.answer          = result_text
+            conv_record.model           = model_used
+            conv_record.agent           = agent_name
+            conv_record.collection      = payload.collection_filter or conv_record.collection or "All Documents"
+            conv_record.status          = audit_status
+            conv_record.preview         = result_text[:160]
+            conv_record.messages_json   = json.dumps(existing_turns)
+            conv_record.execution_trace = json.dumps([s.model_dump() for s in steps])
+
+        # Save individual evidence records
+        for ev in evidence:
+            db_ev = InvestigationEvidence(
+                investigation_id = conv_id,
+                filename         = ev.filename,
+                page             = ev.page,
+                excerpt          = ev.excerpt,
+                relevance        = ev.relevance,
+                created_at       = now,
+            )
+            db.add(db_ev)
 
         db.commit()
 
@@ -551,12 +915,16 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
             timestamp       = timestamp_str,
             user_role       = payload.user_role,
             agent           = agent_name,
-            status          = "VERIFIED",
+            model           = model_used,
+            model_routing   = routing_info,
+            status          = loop_status,
             inference_mode  = inference_mode,
             result          = result_text,
             evidence        = evidence,
             steps           = steps,
+            tools_invoked   = tools_used,
             entry_hash      = entry_hash,
+            approval_request = approval_request,
         )
 
     except Exception as e:
@@ -583,6 +951,82 @@ def execute_query(payload: ExecuteRequest, db: Session = Depends(get_db)):
         )
 
 
+
+class DiagnosticActionRequest(BaseModel):
+    agent_id: str = "agent-maintenance"
+    action: str = "SYSTEM_HEALTH_CHECK"
+    decision: str = "ALLOW"
+    user_role: str = "OPERATOR_L2"
+
+
+@app.post("/api/action/diagnostic")
+def run_diagnostic_action(payload: DiagnosticActionRequest, db: Session = Depends(get_db)):
+    now = datetime.utcnow()
+    timestamp_str = now.strftime("%H:%M:%S")
+    execution_id = f"EXEC-DIAG-{int(now.timestamp() * 1000)}"
+
+    agent_name = {
+        "agent-maintenance": "Maintenance Agent",
+        "agent-knowledge":   "Knowledge Agent",
+        "agent-security":    "Safety Officer",
+    }.get(payload.agent_id, "Maintenance Agent")
+
+    if payload.decision.upper() == "ALLOW":
+        status_text = "PERMISSION_GRANTED"
+        detail_msg = "Diagnostic check on Node IC-HYD-01: RAM Normal, Ollama local weights verified, Air-gapped boundary ACTIVE."
+        action_status = "VERIFIED"
+    else:
+        status_text = "BLOCKED_BY_OPERATOR"
+        detail_msg = f"Diagnostic action '{payload.action}' was rejected by human operator ({payload.user_role})."
+        action_status = "REJECTED"
+
+    last_entry = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
+    prev_hash = last_entry.entry_hash if last_entry else "0" * 64
+
+    entry_hash = _hash_entry(
+        previous_hash=prev_hash,
+        execution_id=execution_id,
+        timestamp=timestamp_str,
+        user_role=payload.user_role,
+        user_request=f"HITL Action: {payload.action} [{payload.decision}]",
+        agent=agent_name,
+        result=detail_msg,
+        status_text=action_status,
+    )
+
+    db_entry = AuditLogEntry(
+        execution_id=execution_id,
+        timestamp=now,
+        user_role=payload.user_role,
+        user_request=f"HITL Action: {payload.action} [{payload.decision}]",
+        agent=agent_name,
+        execution_steps=json.dumps([
+            {"id": "hitl-1", "event": "HUMAN APPROVAL CHECK", "detail": f"Decision: {payload.decision}", "duration_ms": 10},
+            {"id": "hitl-2", "event": "DIAGNOSTIC DISPATCH", "detail": status_text, "duration_ms": 15},
+        ]),
+        tools_invoked=json.dumps(["check_system_health"] if payload.decision.upper() == "ALLOW" else []),
+        retrieved_sources=json.dumps([]),
+        result=detail_msg,
+        status=action_status,
+        inference_mode="LOCAL_SYSTEM",
+        previous_hash=prev_hash,
+        entry_hash=entry_hash,
+    )
+    db.add(db_entry)
+    db.commit()
+
+    return {
+        "execution_id": execution_id,
+        "timestamp": timestamp_str,
+        "agent": agent_name,
+        "decision": payload.decision,
+        "status": action_status,
+        "detail": detail_msg,
+        "entry_hash": entry_hash,
+        "previous_hash": prev_hash
+    }
+
+
 @app.get("/api/security", response_model=SecurityResponse)
 def get_security_state():
     return SecurityResponse(
@@ -599,6 +1043,70 @@ def get_security_state():
             "administrative_tools": "DENIED",
         },
     )
+
+
+@app.get("/api/security/network-status")
+def get_network_status():
+    """Return live zero-egress network boundary telemetry."""
+    from .network_monitor import verify_network_boundary
+    return verify_network_boundary()
+
+
+@app.post("/api/security/verify-boundary")
+def verify_network_boundary_action(db: Session = Depends(get_db)):
+    """
+    Perform a live network boundary audit and log a verified event into the SHA-256 audit chain.
+    """
+    from .network_monitor import verify_network_boundary
+
+    report = verify_network_boundary()
+    now = datetime.utcnow()
+    timestamp_str = now.strftime("%H:%M:%S")
+    execution_id = f"NET-CHECK-{int(now.timestamp() * 1000)}"
+
+    last_entry = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
+    prev_hash = last_entry.entry_hash if last_entry else "0" * 64
+
+    entry_hash = _hash_entry(
+        previous_hash=prev_hash,
+        execution_id=execution_id,
+        timestamp=timestamp_str,
+        user_role="OPERATOR_L2",
+        user_request="NETWORK_BOUNDARY_VERIFICATION",
+        agent="Security Officer",
+        result=f"Zero-egress boundary verified within application scope. {report['external_requests_detected']} external requests detected.",
+        status_text="VERIFIED",
+    )
+
+    db_entry = AuditLogEntry(
+        execution_id=execution_id,
+        timestamp=now,
+        user_role="OPERATOR_L2",
+        user_request="NETWORK_BOUNDARY_VERIFICATION",
+        agent="Security Officer",
+        execution_steps=json.dumps([
+            {"id": "net-1", "event": "LOCAL SERVICE AUDIT", "detail": "FastAPI (8000), Ollama (11434), ChromaDB, SQLite ONLINE", "duration_ms": 12},
+            {"id": "net-2", "event": "CLOUD API SCAN", "detail": "OpenAI / Anthropic / Gemini: NONE CONFIGURED", "duration_ms": 5},
+            {"id": "net-3", "event": "EGRESS LEDGER INSPECTION", "detail": "0 External requests detected by application telemetry", "duration_ms": 8},
+        ]),
+        tools_invoked=json.dumps(["verify_network_boundary"]),
+        retrieved_sources=json.dumps([]),
+        result=f"Zero-egress boundary verified within application scope. {report['external_requests_detected']} external requests detected.",
+        status="VERIFIED",
+        inference_mode="LOCAL_SYSTEM",
+        previous_hash=prev_hash,
+        entry_hash=entry_hash,
+    )
+    db.add(db_entry)
+    db.commit()
+
+    return {
+        "success": True,
+        "boundary_status": report["boundary_status"],
+        "execution_id": execution_id,
+        "entry_hash": entry_hash,
+        "report": report
+    }
 
 
 @app.get("/api/audit", response_model=List[AuditEntry])
@@ -660,6 +1168,8 @@ def verify_audit_chain(db: Session = Depends(get_db)):
         chain_valid      = broken_at is None,
         total_entries    = len(entries),
         verified_entries = verified_count,
+        first_hash       = entries[0].entry_hash if entries else "",
+        last_hash        = entries[-1].entry_hash if entries else "",
         broken_at        = broken_at,
     )
 

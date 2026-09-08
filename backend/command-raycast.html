@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>INNERCORE — Raycast Command Palette</title>
+  <link rel="stylesheet" href="command-raycast.css">
+</head>
+<body>
+
+  <!-- Atmospheric Blurred Ambient Background -->
+  <div class="raycast-backdrop-container" aria-hidden="true">
+    <div class="ambient-light-pool pool-emerald"></div>
+    <div class="ambient-light-pool pool-cyan"></div>
+    <div class="ambient-light-pool pool-violet"></div>
+    <div class="ambient-light-pool pool-magenta"></div>
+  </div>
+
+  <!-- Minimal Top Header Strip -->
+  <header class="raycast-top-strip">
+    <div class="strip-brand">
+      <div class="strip-brand-mark">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" stroke-width="1.6"/>
+          <path d="M12 7v10M7 12h10" stroke-width="1.6"/>
+        </svg>
+      </div>
+      <span class="strip-brand-title">INNERCORE</span>
+    </div>
+
+    <!-- Center Navigation Tabs -->
+    <nav class="strip-nav" aria-label="Raycast Palette Views">
+      <button class="strip-nav-btn active" data-view="workspace">WORKSPACE</button>
+      <button class="strip-nav-btn" data-view="knowledge">KNOWLEDGE</button>
+      <button class="strip-nav-btn" data-view="history">HISTORY</button>
+      <button class="strip-nav-btn" data-view="security">SECURITY</button>
+    </nav>
+
+    <!-- Right Telemetry & Original View Switcher -->
+    <div class="strip-status">
+      <div class="status-badge-airgap">
+        <span class="pulse-pip"></span>
+        <span>AIR-GAPPED &middot; ZERO EGRESS</span>
+      </div>
+      <a href="command-center.html" class="btn-switch-original" title="Switch to sovereign full-width workspace">
+        Full Workspace &rarr;
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Centered Floating Raycast Command Window -->
+  <main class="raycast-viewport-wrapper">
+    <div class="raycast-window" id="raycast-main-window">
+
+      <!-- Command Palette Input Bar -->
+      <div class="raycast-input-bar">
+        <div class="input-search-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7" stroke-width="1.8"/>
+            <path d="M16.5 16.5L21 21" stroke-width="1.8"/>
+          </svg>
+        </div>
+
+        <input
+          type="text"
+          id="raycast-input"
+          class="raycast-main-input"
+          placeholder="Search private organizational knowledge or ask an investigation..."
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+        />
+
+        <div class="agent-selector-pill" title="Select active operational agent">
+          <span>AGENT:</span>
+          <select id="raycast-agent-select">
+            <option value="agent-maintenance">Maintenance</option>
+            <option value="agent-knowledge">Knowledge</option>
+            <option value="agent-security">Safety Officer</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Dynamic Window Body (Initial / Executing / Result / Secondary Views) -->
+      <div class="raycast-body" id="raycast-window-body"></div>
+
+      <!-- Keyboard Shortcut Footer Bar -->
+      <footer class="raycast-footer">
+        <div class="footer-left-shortcuts">
+          <div class="footer-shortcut-item"><kbd>↵</kbd><span>Investigate</span></div>
+          <div class="footer-shortcut-item"><kbd>ESC</kbd><span>Clear / Close</span></div>
+          <div class="footer-shortcut-item"><kbd>⌘K</kbd><span>Focus</span></div>
+        </div>
+        <div style="color:var(--ink-faint); font-size:9px;">INNERCORE SOVEREIGN PALETTE v2.0</div>
+      </footer>
+
+    </div>
+  </main>
+
+  <!-- Slide-Over Exact Citation PDF Viewer Drawer -->
+  <aside class="raycast-doc-drawer" id="raycast-doc-drawer" aria-label="Document Viewer">
+    <div class="drawer-header">
+      <div class="drawer-doc-title">
+        <span>📄</span>
+        <span id="raycast-drawer-title">Document.pdf</span>
+      </div>
+      <button class="drawer-close-btn" id="raycast-drawer-close" title="Close drawer">&times;</button>
+    </div>
+    <div class="drawer-citation-bar">
+      <span id="raycast-drawer-citation">PAGE 1 &bull; 95% RELEVANCE</span>
+      <span>ON-PREMISE ENCLAVE</span>
+    </div>
+    <iframe class="drawer-body-iframe" id="raycast-drawer-iframe" title="PDF Document Page Viewer"></iframe>
+  </aside>
+
+  <script src="command-raycast.js"></script>
+</body>
+</html>

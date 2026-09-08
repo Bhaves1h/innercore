@@ -1,0 +1,880 @@
+/* ======================================================================
+   INNERCORE INDUSTRIAL WORKSTATION (EXPERIMENTAL ALTERNATIVE UI)
+   Design Language: Solid Matte Surfaces, Engineered Precision, Bloomberg/Linear Aesthetic
+   Strict Invariant: ZERO Glassmorphism, ZERO Backdrop-Filter, ZERO Neon Glows
+   ====================================================================== */
+
+:root {
+  /* Matte Surface Hierarchy */
+  --surface-void: #060807;
+  --surface-base: #0B0D0C;
+  --surface-panel: #101311;
+  --surface-sub: #151816;
+  --surface-elevated: #1A1E1C;
+  --surface-hover: #1E2320;
+  --surface-active: #232925;
+
+  /* Subtle Engineered Borders */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-accent: rgba(61, 240, 158, 0.35);
+
+  /* Precise Technical Typography Colors */
+  --text-bright: #EDEDED;
+  --text-main: #D4DAD6;
+  --text-secondary: #8E9691;
+  --text-muted: #5A635D;
+  --text-faint: #3B423D;
+
+  /* Restrained Functional Status Colors */
+  --moss-primary: #3df09e;
+  --moss-dark: #1e8250;
+  --moss-light: #65f5b2;
+  --moss-tag-bg: rgba(61, 240, 158, 0.08);
+
+  --cyan-info: #06b6d4;
+  --cyan-tag-bg: rgba(6, 182, 212, 0.08);
+
+  --amber-warn: #f0b429;
+  --amber-tag-bg: rgba(240, 180, 41, 0.08);
+
+  --red-danger: #f04d3d;
+  --red-tag-bg: rgba(240, 77, 61, 0.08);
+
+  /* Typography Systems */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --ease-sharp: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  width: 100%;
+  background-color: var(--surface-base);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: rgba(61, 240, 158, 0.25);
+  color: #ffffff;
+}
+
+/* Fixed Top Workstation Status Strip */
+.industrial-top-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-base);
+}
+
+.strip-left-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.strip-system-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--text-bright);
+}
+
+.strip-build-id {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+}
+
+.strip-center-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.strip-nav-item {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+.strip-nav-item:hover {
+  color: var(--text-bright);
+  background: var(--surface-panel);
+  border-color: var(--border-subtle);
+}
+.strip-nav-item.active {
+  color: var(--moss-primary);
+  background: var(--surface-panel);
+  border-color: rgba(61, 240, 158, 0.25);
+}
+
+.strip-right-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+}
+
+.telemetry-chip {
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.telemetry-chip strong {
+  color: var(--text-bright);
+  font-weight: 500;
+}
+
+.status-dot-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot-led.green {
+  background: var(--moss-primary);
+}
+.status-dot-led.cyan {
+  background: var(--cyan-info);
+}
+.status-dot-led.amber {
+  background: var(--amber-warn);
+}
+
+.link-alt-center {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  transition: all 0.15s ease;
+}
+.link-alt-center:hover {
+  color: var(--text-bright);
+  border-color: var(--border-medium);
+}
+
+/* Main Workstation Stage */
+.industrial-workspace-stage {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 72px 24px 80px;
+}
+
+/* Centered Matte Workstation Container */
+.industrial-workstation-card {
+  width: 960px;
+  max-width: calc(100vw - 48px);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+}
+
+/* Workstation Top Control Bar (Command Input Bar) */
+.workstation-input-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--surface-sub);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.input-prompt-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--moss-primary);
+  flex-shrink: 0;
+}
+
+.industrial-input {
+  flex: 1;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  color: var(--text-bright);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.industrial-input:focus {
+  border-color: var(--border-accent);
+}
+.industrial-input::placeholder {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.agent-selector-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.agent-selector-box select {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-bright);
+  cursor: pointer;
+}
+
+.btn-execute-industrial {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 7px 16px;
+  border-radius: 4px;
+  background: var(--moss-dark);
+  border: 1px solid rgba(61, 240, 158, 0.4);
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.btn-execute-industrial:hover:not(:disabled) {
+  background: #22995e;
+}
+.btn-execute-industrial:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Metadata Strip below input */
+.workstation-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 18px;
+  background: var(--surface-base);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.meta-item-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.meta-item-tag span.val {
+  color: var(--text-secondary);
+}
+
+/* Workstation Body Container */
+.workstation-body {
+  padding: 20px 22px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* INITIAL STATE: Action Inventory Controls */
+.section-header-compact {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.industrial-action-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+.industrial-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.industrial-action-row:last-child {
+  border-bottom: none;
+}
+.industrial-action-row:hover {
+  background: var(--surface-elevated);
+}
+
+.action-row-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.action-row-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--moss-primary);
+  width: 20px;
+}
+
+.action-row-info {
+  display: flex;
+  flex-direction: column;
+}
+.action-row-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-bright);
+}
+.action-row-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.action-row-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+}
+
+/* EXECUTION STATE: 7-Stage Technical Process */
+.exec-header-block {
+  background: var(--surface-sub);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.exec-query-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--moss-primary);
+  letter-spacing: 0.7px;
+  margin-bottom: 3px;
+}
+.exec-query-prose {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-bright);
+}
+
+.process-table-container {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+.process-table-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.process-table-row:last-child {
+  border-bottom: none;
+}
+
+.process-table-row.done {
+  color: var(--text-bright);
+  background: rgba(255, 255, 255, 0.015);
+}
+.process-table-row.done .stage-status-val {
+  color: var(--moss-primary);
+}
+
+.process-table-row.active {
+  color: #ffffff;
+  background: var(--surface-elevated);
+  border-left: 2px solid var(--moss-primary);
+}
+.process-table-row.active .stage-status-val {
+  color: var(--moss-primary);
+  font-weight: 600;
+}
+
+.process-table-row.pending {
+  opacity: 0.45;
+}
+
+.process-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stage-num-mono {
+  width: 22px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.stage-name-text {
+  font-weight: 500;
+}
+
+.stage-detail-live-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* RESULT STATE: Technical Report & Evidence Inventory */
+.report-headline-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.report-agent-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.badge-solid-moss {
+  color: var(--moss-primary);
+  background: var(--moss-tag-bg);
+  border: 1px solid rgba(61, 240, 158, 0.25);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.technical-prose-report {
+  background: var(--surface-sub);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-bright);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* HITL Industrial Authorization Gate */
+.hitl-industrial-box {
+  background: var(--surface-sub);
+  border: 1px solid var(--amber-warn);
+  border-radius: 4px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hitl-ind-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--amber-warn);
+  letter-spacing: 0.8px;
+}
+.hitl-ind-action-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-bright);
+}
+.hitl-ind-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-secondary);
+  background: var(--surface-base);
+  padding: 8px 10px;
+  border-radius: 3px;
+}
+.hitl-btn-strip {
+  display: flex;
+  gap: 8px;
+}
+.btn-hitl-ind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.btn-hitl-ind.approve {
+  background: var(--moss-dark);
+  border: 1px solid rgba(61, 240, 158, 0.4);
+  color: #ffffff;
+}
+.btn-hitl-ind.approve:hover {
+  background: #22995e;
+}
+.btn-hitl-ind.deny {
+  background: #7a1d15;
+  border: 1px solid rgba(240, 77, 61, 0.4);
+  color: #ffffff;
+}
+.btn-hitl-ind.deny:hover {
+  background: #94251c;
+}
+
+/* Evidence Inventory Table */
+.evidence-table-container {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--surface-sub);
+  overflow: hidden;
+}
+
+.evidence-table-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.evidence-table-row:last-child {
+  border-bottom: none;
+}
+.evidence-table-row:hover {
+  background: var(--surface-elevated);
+}
+
+.evidence-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.evidence-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-bright);
+}
+.evidence-row-right-actions {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--moss-primary);
+}
+
+.evidence-row-specs {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.evidence-row-specs strong {
+  color: var(--text-secondary);
+}
+
+.evidence-row-quote {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+  padding-left: 8px;
+  border-left: 2px solid var(--border-medium);
+}
+
+/* Action Strip */
+.report-action-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.btn-ind-action {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 6px 12px;
+  border-radius: 3px;
+  background: var(--surface-sub);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.btn-ind-action:hover {
+  background: var(--surface-elevated);
+  border-color: var(--border-medium);
+  color: var(--text-bright);
+}
+.btn-ind-action.active {
+  background: var(--surface-elevated);
+  border-color: var(--border-accent);
+  color: var(--moss-primary);
+}
+
+/* Why This Answer Technical Panel */
+.why-answer-technical-box {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+}
+.why-box-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.why-metric-cell {
+  background: var(--surface-sub);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 6px 10px;
+}
+.why-metric-lbl {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+.why-metric-val {
+  font-size: 11.5px;
+  color: var(--text-bright);
+}
+
+/* Secondary Views: Knowledge, History, Security */
+.secondary-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tabs-filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tab-filter-btn {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: var(--surface-sub);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.tab-filter-btn:hover {
+  color: var(--text-bright);
+  background: var(--surface-elevated);
+}
+.tab-filter-btn.active {
+  color: var(--moss-primary);
+  background: var(--surface-elevated);
+  border-color: var(--border-accent);
+}
+
+/* Slide-over Exact PDF Citation Drawer */
+.industrial-doc-drawer {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  bottom: 0;
+  width: 600px;
+  max-width: 95vw;
+  background: var(--surface-panel);
+  border-left: 1px solid var(--border-medium);
+  display: flex;
+  flex-direction: column;
+  z-index: 1050;
+  transform: translateX(100%);
+  transition: transform 0.25s var(--ease-sharp);
+  pointer-events: none;
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.6);
+}
+.industrial-doc-drawer.open {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.ind-drawer-header {
+  height: 46px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sub);
+}
+
+.ind-drawer-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ind-drawer-close {
+  font-size: 16px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.ind-drawer-close:hover {
+  color: var(--text-bright);
+  background: var(--surface-elevated);
+}
+
+.ind-drawer-citation-bar {
+  padding: 6px 16px;
+  background: var(--surface-base);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--moss-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ind-drawer-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #080a09;
+}
+
+/* Footer Telemetry Status */
+.workstation-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: var(--surface-sub);
+  border-top: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.footer-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Responsiveness */
+@media (max-width: 900px) {
+  .industrial-workspace-stage {
+    padding: 64px 12px 60px;
+  }
+  .industrial-workstation-card {
+    width: 100%;
+    max-width: 100%;
+  }
+  .strip-right-telemetry {
+    display: none;
+  }
+  .industrial-doc-drawer {
+    width: 100%;
+    max-width: 100vw;
+  }
+}

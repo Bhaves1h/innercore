@@ -1,0 +1,138 @@
+Slide width: 12192000, height: 6858000
+
+============================== SLIDE 1 ==============================
+Layout: Title Slide
+  Shape 0: "Rectangle 24" (AUTO_SHAPE (1)) at left=1524000, top=0, width=9144000, height=6858000
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Freeform: Shape 26" (FREEFORM (5)) at left=5656780, top=851521, width=4638605, height=5154967
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 2: "Picture 4" (PICTURE (13)) at left=6854891, top=1715881, width=3203509, height=3426237
+  Shape 3: "Subtitle 3" (PLACEHOLDER (14)) at left=1245686, top=648614, width=8534400, height=1752600
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+    P1 (lvl=0): "TITLE PAGE" | fonts=['Times New Roman'], sizes=[None], colors=['TEXT_1 (13)']
+  Shape 4: "Title 7" (PLACEHOLDER (14)) at left=331286, top=-526757, width=10363200, height=2076450
+    P0 (lvl=0): "SMART INDIA HACKATHON 2026" | fonts=['Garamond', 'Garamond'], sizes=[40.0, 40.0], colors=['TEXT_2 (15)', 'TEXT_2 (15)']
+  Shape 5: "TextBox 9" (TEXT_BOX (17)) at left=331286, top=2076450, width=5924550, height=4703019
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+    P1 (lvl=0): "Problem Statement ID –" | fonts=['Arial'], sizes=[24.0], colors=[]
+    P2 (lvl=0): "Problem Statement Title-" | fonts=['Arial'], sizes=[24.0], colors=[]
+    P3 (lvl=0): "Theme-" | fonts=['Arial'], sizes=[24.0], colors=[]
+    P4 (lvl=0): "PS Category- Software/Hardware" | fonts=['Arial'], sizes=[24.0], colors=[]
+    P5 (lvl=0): "Team ID-" | fonts=['Arial'], sizes=[24.0], colors=[]
+    P6 (lvl=0): "Team Name (Registered on portal)" | fonts=['Arial'], sizes=[24.0], colors=[]
+  Shape 6: "Picture 1" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 2 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 8" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Title 1" (PLACEHOLDER (14)) at left=182998, top=0, width=10972800, height=1143000
+    P0 (lvl=0): "IDEA TITLE" | fonts=['Times New Roman', 'Times New Roman'], sizes=[36.0, 36.0], colors=[]
+  Shape 2: "TextBox 8" (TEXT_BOX (17)) at left=-1, top=2064921, width=12191999, height=2492990
+    P0 (lvl=0): "Proposed Solution (Describe your Idea/Solution/Prototype)" | fonts=['Arial'], sizes=[32.0], colors=['TEXT_2 (15)']
+    P1 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+    P2 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+    P3 (lvl=0): "Detailed explanation of the proposed solution" | fonts=['Arial'], sizes=[28.0], colors=[]
+    P4 (lvl=0): " How it addresses the problem" | fonts=['Arial'], sizes=[28.0], colors=[]
+    P5 (lvl=0): "Innovation and uniqueness of the solution " | fonts=['Arial'], sizes=[28.0], colors=[]
+  Shape 3: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "2" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=[], sizes=[None], colors=['BACKGROUND_1 (14)']
+  Shape 5: "Oval 9" (AUTO_SHAPE (1)) at left=329773, top=252246, width=1251857, height=807334
+    P0 (lvl=0): "Your Team Name" | fonts=[], sizes=[None], colors=[]
+  Shape 6: "Picture 10" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 3 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 9" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Title 1" (PLACEHOLDER (14)) at left=609600, top=-47625, width=10972800, height=1143000
+    P0 (lvl=0): "TECHNICAL APPROACH" | fonts=['Times New Roman'], sizes=[36.0], colors=[]
+  Shape 2: "TextBox 8" (TEXT_BOX (17)) at left=609600, top=2533653, width=9385300, height=1815882
+    P0 (lvl=0): "Technologies to be used (e.g. programming languages, frameworks, hardware)" | fonts=['Arial'], sizes=[28.0], colors=[]
+    P1 (lvl=0): "Methodology and process for implementation (Flow Charts/Images/ working prototype)" | fonts=['Arial'], sizes=[28.0], colors=[]
+  Shape 3: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "3" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=[], sizes=[None], colors=['BACKGROUND_1 (14)']
+  Shape 5: "Oval 10" (AUTO_SHAPE (1)) at left=329773, top=252246, width=1251857, height=807334
+    P0 (lvl=0): "Your Team Name" | fonts=[], sizes=[None], colors=[]
+  Shape 6: "Picture 11" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 4 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 9" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Title 1" (PLACEHOLDER (14)) at left=609600, top=-47625, width=10972800, height=1143000
+    P0 (lvl=0): "FEASIBILITY AND VIABILITY" | fonts=['Times New Roman'], sizes=[36.0], colors=[]
+  Shape 2: "TextBox 8" (TEXT_BOX (17)) at left=609600, top=2533653, width=9385300, height=1384995
+    P0 (lvl=0): "Analysis of the feasibility of the idea" | fonts=['Arial'], sizes=[28.0], colors=['NOT_THEME_COLOR (0)']
+    P1 (lvl=0): "Potential challenges and risks" | fonts=['Arial'], sizes=[28.0], colors=['NOT_THEME_COLOR (0)']
+    P2 (lvl=0): "Strategies for overcoming these challenges" | fonts=['Arial', 'Arial'], sizes=[28.0, 28.0], colors=['NOT_THEME_COLOR (0)', 'NOT_THEME_COLOR (0)']
+  Shape 3: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "4" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=['TradeGothic'], sizes=[12.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 5: "Oval 11" (AUTO_SHAPE (1)) at left=329773, top=252246, width=1251857, height=807334
+    P0 (lvl=0): "Your Team Name" | fonts=[], sizes=[None], colors=[]
+  Shape 6: "Picture 10" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 5 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 9" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Title 1" (PLACEHOLDER (14)) at left=609600, top=-47625, width=10972800, height=1143000
+    P0 (lvl=0): "IMPACT AND BENEFITS" | fonts=['Times New Roman'], sizes=[36.0], colors=[]
+  Shape 2: "TextBox 8" (TEXT_BOX (17)) at left=609600, top=2533653, width=9385300, height=1384995
+    P0 (lvl=0): "Potential impact on the target audience" | fonts=['Arial'], sizes=[28.0], colors=['NOT_THEME_COLOR (0)']
+    P1 (lvl=0): "Benefits of the solution (social, economic, environmental, etc.)" | fonts=['Arial'], sizes=[28.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 3: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "5" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=['TradeGothic'], sizes=[12.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 5: "Oval 11" (AUTO_SHAPE (1)) at left=329773, top=252246, width=1251857, height=807334
+    P0 (lvl=0): "Your Team Name" | fonts=[], sizes=[None], colors=[]
+  Shape 6: "Picture 10" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 6 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 9" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Title 1" (PLACEHOLDER (14)) at left=609600, top=-47625, width=10972800, height=1143000
+    P0 (lvl=0): "RESEARCH  AND REFERENCES" | fonts=['Times New Roman'], sizes=[36.0], colors=[]
+  Shape 2: "TextBox 8" (TEXT_BOX (17)) at left=609600, top=2795263, width=9385300, height=523220
+    P0 (lvl=0): "Details / Links of the reference and research work" | fonts=['Arial'], sizes=[28.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 3: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "6" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=['TradeGothic'], sizes=[12.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 5: "Oval 8" (AUTO_SHAPE (1)) at left=329773, top=252246, width=1251857, height=807334
+    P0 (lvl=0): "Your Team Name" | fonts=[], sizes=[None], colors=[]
+  Shape 6: "Picture 11" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337
+
+============================== SLIDE 7 ==============================
+Layout: Title and Content
+  Shape 0: "Rectangle 9" (AUTO_SHAPE (1)) at left=0, top=6354762, width=12191999, height=503238
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 1: "Slide Number Placeholder 5" (PLACEHOLDER (14)) at left=8737600, top=6356353, width=2844800, height=365125
+    P0 (lvl=0): "7" | fonts=[], sizes=[], colors=[]
+  Shape 2: "Footer Placeholder 6" (PLACEHOLDER (14)) at left=4648200, top=6356353, width=3204000, height=365125
+    P0 (lvl=0): "@SIH Idea submission- Template" | fonts=['TradeGothic'], sizes=[12.0], colors=['NOT_THEME_COLOR (0)']
+  Shape 3: "Round Diagonal Corner Rectangle 2" (AUTO_SHAPE (1)) at left=0, top=1791032, width=12192000, height=4319200
+    P0 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+  Shape 4: "Google Shape;100;p3" (TEXT_BOX (17)) at left=367832, top=1915454, width=11764736, height=4070356
+    P0 (lvl=0): "Kindly keep the maximum slides limit up to six (6). ( Including the title slide) " | fonts=['Arial', 'Arial', 'Arial', 'Arial'], sizes=[None, None, None, None], colors=['DARK_1 (1)', 'C00000', 'DARK_1 (1)', 'DARK_1 (1)']
+    P1 (lvl=0): "Try to avoid paragraphs and post your idea in points /diagrams / Infographics /pictures " | fonts=['Arial'], sizes=[None], colors=['DARK_1 (1)']
+    P2 (lvl=0): "Keep your explanation precise and easy to understand" | fonts=['Arial'], sizes=[None], colors=['DARK_1 (1)']
+    P3 (lvl=0): "Idea should be unique and novel. " | fonts=['Arial'], sizes=[None], colors=['DARK_1 (1)']
+    P4 (lvl=0): "You can only use provided template for making the PPT without changing the idea details pointers (mentioned in previous slides)." | fonts=['Arial', 'Arial', 'Arial', 'Arial', 'Arial'], sizes=[None, None, None, None, None], colors=['DARK_1 (1)', 'DARK_1 (1)', 'DARK_1 (1)', 'DARK_1 (1)', 'DARK_1 (1)']
+    P5 (lvl=0): "You need to save the file in PDF and upload the same on portal. No PPT, Word Doc or any other format will be supported." | fonts=['Arial'], sizes=[None], colors=['DARK_1 (1)']
+    P6 (lvl=0): "" | fonts=[], sizes=[], colors=[]
+    P7 (lvl=0): "Note - You can delete this slide (Important Pointers) when you upload the details of your idea on SIH portal." | fonts=['Arial'], sizes=[None], colors=['C00000']
+    P8 (lvl=1): "" | fonts=[], sizes=[], colors=[]
+  Shape 5: "TextBox 3" (TEXT_BOX (17)) at left=1393371, top=107066, width=8410540, height=646331
+    P0 (lvl=0): "IMPORTANT INSTRUCTIONS" | fonts=['Times New Roman'], sizes=[36.0], colors=[]
+  Shape 6: "TextBox 4" (TEXT_BOX (17)) at left=602343, top=1181900, width=9557657, height=341632
+    P0 (lvl=0): "Please ensure below pointers are met while submitting the Idea PPT:" | fonts=['Arial'], sizes=[None], colors=['DARK_1 (1)']
+  Shape 7: "Picture 12" (PICTURE (13)) at left=9780086, top=1500, width=2249850, height=1062337

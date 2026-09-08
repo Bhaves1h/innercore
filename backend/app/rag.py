@@ -21,7 +21,52 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 CHROMA_PATH = os.path.join(os.path.dirname(__file__), "..", "chroma_db")
+UPLOADED_DOCS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploaded_docs"))
+os.makedirs(UPLOADED_DOCS_DIR, exist_ok=True)
+
 EMBED_MODEL = "all-MiniLM-L6-v2 (ONNX)"
+
+def save_raw_document(filename: str, file_bytes: bytes) -> str:
+    """Persist the uploaded raw binary file locally for native document viewing."""
+    path = os.path.join(UPLOADED_DOCS_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(file_bytes)
+    return path
+
+
+def find_raw_document(filename: str) -> Optional[str]:
+    """Locate the stored raw document file locally."""
+    candidates = [
+        os.path.join(UPLOADED_DOCS_DIR, filename),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", filename)),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", filename)),
+        os.path.abspath(os.path.join(os.getcwd(), filename)),
+        os.path.abspath(os.path.join(os.getcwd(), "backend", filename)),
+        os.path.abspath(os.path.join(os.getcwd(), "uploaded_docs", filename)),
+        os.path.abspath(os.path.join(os.getcwd(), "backend", "uploaded_docs", filename)),
+    ]
+    for p in candidates:
+        if os.path.exists(p) and os.path.isfile(p):
+            return p
+
+    # Fuzzy / alias lookup (e.g. uploaded_exec_summary.pdf <-> Executive Summary.pdf)
+    fn_lower = filename.lower()
+    if "exec_summary" in fn_lower or "executive summary" in fn_lower:
+        alt_names = ["Executive Summary.pdf", "uploaded_exec_summary.pdf"]
+        for alt in alt_names:
+            for p in candidates:
+                alt_p = p.replace(filename, alt)
+                if os.path.exists(alt_p) and os.path.isfile(alt_p):
+                    return alt_p
+
+    # Check directory listing in UPLOADED_DOCS_DIR case-insensitively
+    if os.path.exists(UPLOADED_DOCS_DIR):
+        for f in os.listdir(UPLOADED_DOCS_DIR):
+            if f.lower() == fn_lower:
+                return os.path.join(UPLOADED_DOCS_DIR, f)
+
+    return None
+
 
 # Singleton clients (initialised lazily)
 _chroma_client: chromadb.PersistentClient | None = None
@@ -309,10 +354,11 @@ def _extract_plain_text(file_bytes: bytes, filename: str) -> List[tuple[int, str
     return sections
 
 
-def process_document(file_bytes: bytes, filename: str) -> Dict[str, Any]:
+def process_document(file_bytes: bytes, filename: str, collection_name: str = "All Documents") -> Dict[str, Any]:
     """
     Process PDF, DOCX, TXT, MD, CSV into semantic chunks with provenance and index into ChromaDB.
     """
+    save_raw_document(filename, file_bytes)
     doc_id = str(uuid.uuid4())
     ext = os.path.splitext(filename)[1].lower()
     all_chunks: List[Dict[str, Any]] = []
@@ -378,6 +424,7 @@ def process_document(file_bytes: bytes, filename: str) -> Dict[str, Any]:
             "doc_id":         c["doc_id"],
             "filename":       c["filename"],
             "file_type":      c.get("file_type", "DOC"),
+            "collection":     collection_name,
             "page":           c["page"],
             "source_locator": c.get("source_locator", f"Page {c['page']}"),
             "chunk_idx":      c["chunk_idx"],
@@ -389,11 +436,29 @@ def process_document(file_bytes: bytes, filename: str) -> Dict[str, Any]:
         "doc_id":      doc_id,
         "filename":    filename,
         "file_type":   all_chunks[0].get("file_type", "DOC"),
+        "collection":  collection_name,
         "page_count":  page_count,
         "chunk_count": len(all_chunks),
         "status":      "INDEXED",
     }
 
+
+
+def update_document_collection_metadata(filename: str, collection_name: str) -> bool:
+    """Update collection metadata for existing chunks in ChromaDB without re-embedding."""
+    try:
+        col = _get_collection()
+        res = col.get(where={"filename": filename})
+        if res and res.get("ids"):
+            metas = res.get("metadatas", [])
+            for m in metas:
+                m["collection"] = collection_name
+            col.update(ids=res["ids"], metadatas=metas)
+            print(f"[RAG] Updated {len(res['ids'])} chunks for '{filename}' to collection '{collection_name}'")
+            return True
+    except Exception as e:
+        print(f"[RAG] Error updating collection metadata: {e}")
+    return False
 
 def process_pdf(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     return process_document(file_bytes, filename)
@@ -420,13 +485,21 @@ def _auto_index_default_document():
         print(f"[RAG] Auto-indexing default document notice: {e}")
 
 
-def search_knowledge(query: str, n_results: int = 5, doc_filter: str | None = None) -> List[Dict[str, Any]]:
+def search_knowledge(query: str, n_results: int = 5, doc_filter: str | None = None, collection_filter: str | None = None) -> List[Dict[str, Any]]:
     """
     Hybrid semantic + lexical search across the knowledge base.
     Ranks chunks by semantic cosine similarity + keyword overlap boost.
     Attaches query-focused excerpt to each retrieved evidence chunk.
     """
     try:
+        from .network_monitor import record_network_activity
+        record_network_activity(
+            destination="Local ChromaDB",
+            protocol="IPC / SQLite",
+            purpose="On-premise vector search & lexical re-ranking",
+            status="LOCAL",
+            is_external=False
+        )
         collection = _get_collection()
         count = collection.count()
         if count == 0:
@@ -443,8 +516,15 @@ def search_knowledge(query: str, n_results: int = 5, doc_filter: str | None = No
             "n_results": fetch_n,
             "include": ["documents", "metadatas", "distances"],
         }
-        if doc_filter and doc_filter not in ["ALL", "ALL DOCUMENTS"]:
+        has_doc_filter = bool(doc_filter and doc_filter not in ["ALL", "ALL DOCUMENTS", ""])
+        has_col_filter = bool(collection_filter and collection_filter not in ["ALL", "ALL DOCUMENTS", "All Documents", ""])
+
+        if has_doc_filter and has_col_filter:
+            query_kwargs["where"] = {"$and": [{"filename": doc_filter}, {"collection": collection_filter}]}
+        elif has_doc_filter:
             query_kwargs["where"] = {"filename": doc_filter}
+        elif has_col_filter:
+            query_kwargs["where"] = {"collection": collection_filter}
 
         try:
             results = collection.query(**query_kwargs)
@@ -497,6 +577,7 @@ def search_knowledge(query: str, n_results: int = 5, doc_filter: str | None = No
                 "excerpt":        excerpt,
                 "filename":       fn,
                 "file_type":      ftype,
+                "collection":     meta.get("collection", "All Documents"),
                 "page":           pg,
                 "source_locator": locator,
                 "relevance":      relevance_pct,
