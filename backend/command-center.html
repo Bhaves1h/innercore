@@ -2470,13 +2470,15 @@ var EmeraldController = (function initEmeraldHorizon() {
 (function initCommandCenterApp() {
   'use strict';
 
-  var API_BASE = 'http://127.0.0.1:8000';
+  var API_BASE = '';
   if (window.location.protocol.startsWith('http')) {
-    if (window.location.port === '8000') {
-      API_BASE = window.location.origin;
+    if (window.location.port === '8088') {
+      API_BASE = 'http://127.0.0.1:8000';
     } else {
-      API_BASE = 'http://' + (window.location.hostname || '127.0.0.1') + ':8000';
+      API_BASE = window.location.origin;
     }
+  } else {
+    API_BASE = 'http://127.0.0.1:8000';
   }
 
   var currentConversationId = null;
